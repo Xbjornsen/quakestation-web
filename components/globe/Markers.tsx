@@ -8,22 +8,23 @@ import { latLonToVec3 } from "@/lib/geo";
 import { magnitudeColor } from "@/lib/utils";
 import { useGlobeStore } from "@/store/globeStore";
 
+// Cleaner marker design: a flat coloured disc with a thin dark outline,
+// always facing the camera. Reads like a real map pin instead of a
+// glowing bubble. Larger magnitudes get a slowly-expanding ring "ping"
+// to draw the eye without obscuring the surface.
 const markerVertex = /* glsl */ `
   attribute float aSize;
   attribute vec3 aColor;
-  attribute float aPulsePhase;
-  uniform float uTime;
+  attribute float aMag;
   uniform float uPixelRatio;
   varying vec3 vColor;
+  varying float vMag;
   void main() {
     vColor = aColor;
+    vMag = aMag;
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
-    float pulse = 0.95 + 0.1 * sin(uTime * 2.0 + aPulsePhase);
-    float size = aSize * pulse * uPixelRatio * (6.5 / -mvPos.z);
-    // Cap below typical GPU max gl_PointSize (often 64) to avoid the
-    // smearing/clipping artefacts that appear when WebGL silently
-    // truncates oversize points.
-    gl_PointSize = min(size, 48.0);
+    float size = aSize * uPixelRatio * (6.5 / -mvPos.z);
+    gl_PointSize = clamp(size, 4.0, 46.0);
     gl_Position = projectionMatrix * mvPos;
   }
 `;
@@ -31,17 +32,34 @@ const markerVertex = /* glsl */ `
 const markerFragment = /* glsl */ `
   precision highp float;
   varying vec3 vColor;
+  varying float vMag;
+  uniform float uTime;
   void main() {
-    vec2 c = gl_PointCoord - 0.5;
-    float d = length(c) * 2.0;
-    if (d > 1.0) discard;
+    vec2 p = gl_PointCoord - 0.5;
+    float d = length(p) * 2.0;
 
-    // Tight bright core, then a soft falloff to the edge.
-    float core = smoothstep(0.55, 0.05, d);
-    float halo = smoothstep(1.0, 0.55, d) * 0.45;
-    float a = clamp(core + halo, 0.0, 0.95);
+    // Anti-aliased disc edge using screen-space derivatives so it stays
+    // crisp at any zoom level without being a single hard pixel.
+    float edge = fwidth(d) * 1.5;
+    float disc = 1.0 - smoothstep(1.0 - edge, 1.0, d);
+    if (disc < 0.01) discard;
 
-    vec3 col = mix(vColor, mix(vColor, vec3(1.0), 0.7), smoothstep(0.4, 0.0, d));
+    // Thin darker outline ring near the disc's edge.
+    float outlineBand = smoothstep(0.78, 0.92, d) * (1.0 - smoothstep(0.92, 1.0, d));
+    vec3 outlineCol = vColor * 0.22;
+    vec3 fillCol = vColor;
+    vec3 col = mix(fillCol, outlineCol, outlineBand);
+
+    // Sonar-style outward ping for M5+ events.
+    float a = disc;
+    if (vMag >= 5.0) {
+      float t = fract(uTime * 0.6);
+      float ringRadius = mix(0.55, 1.6, t);
+      float ringBand = exp(-pow((d - ringRadius) * 6.0, 2.0)) * (1.0 - t);
+      a = max(a, ringBand * 0.6);
+      col = mix(col, vColor, ringBand);
+    }
+
     gl_FragColor = vec4(col, a);
   }
 `;
@@ -58,23 +76,23 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
     const positions = new Float32Array(n * 3);
     const sizes = new Float32Array(n);
     const colors = new Float32Array(n * 3);
-    const phases = new Float32Array(n);
+    const mags = new Float32Array(n);
     quakes.forEach((q, i) => {
       const v = latLonToVec3(q.lat, q.lon, 1.003);
       positions[i * 3] = v.x;
       positions[i * 3 + 1] = v.y;
       positions[i * 3 + 2] = v.z;
-      sizes[i] = Math.max(4, Math.pow(1.35, q.mag - 3) * 4);
+      sizes[i] = Math.max(5, Math.pow(1.4, q.mag - 3) * 5);
       const [r, gC, b] = magnitudeColor(q.mag);
       colors[i * 3] = r;
       colors[i * 3 + 1] = gC;
       colors[i * 3 + 2] = b;
-      phases[i] = Math.random() * Math.PI * 2;
+      mags[i] = q.mag;
     });
     g.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     g.setAttribute("aSize", new THREE.BufferAttribute(sizes, 1));
     g.setAttribute("aColor", new THREE.BufferAttribute(colors, 3));
-    g.setAttribute("aPulsePhase", new THREE.BufferAttribute(phases, 1));
+    g.setAttribute("aMag", new THREE.BufferAttribute(mags, 1));
     g.computeBoundingSphere();
     return g;
   }, [quakes]);

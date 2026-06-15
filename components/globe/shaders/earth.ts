@@ -39,24 +39,19 @@ export const earthFragment = /* glsl */ `
       dayColor = mix(ocean, land, band) * 1.3;
     }
 
-    // Soft camera-facing shading so the globe still feels 3D without
-    // a true day/night terminator — front fully lit, edges very mildly
-    // shaded so the silhouette reads.
+    // Brighter base — almost flat lit so the whole disc reads clearly,
+    // with just a touch of camera-facing emphasis to keep it 3D.
     float facing = max(dot(n, viewDir), 0.0);
-    vec3 color = dayColor * (0.78 + 0.22 * facing);
+    vec3 color = dayColor * (1.05 + 0.12 * facing);
 
     // Subtle ocean specular toward the camera centre.
     if (uHasMaps > 0.5) {
       float ocean = 1.0 - texture2D(uSpecMap, vUv).r;
       float spec = pow(facing, 18.0) * ocean;
-      color += vec3(spec) * 0.18;
+      color += vec3(spec) * 0.2;
     }
 
-    // Very soft inner rim — barely visible. The bulk of the atmosphere
-    // is the back-facing additive shell drawn separately, so the planet
-    // surface only needs the gentlest of edge lifts.
-    float rim = pow(1.0 - facing, 4.0);
-    color += vec3(0.35, 0.55, 0.95) * rim * 0.12;
+    // No inner rim — the atmosphere shell handles the edge glow.
 
     // Silence the unused night map / sun direction uniforms.
     color += texture2D(uNightMap, vUv).rgb * 0.0;

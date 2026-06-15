@@ -39,7 +39,7 @@ export default function GlobeScene() {
       gl={{ antialias: true, powerPreference: "high-performance" }}
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;
-        gl.toneMappingExposure = 1.05;
+        gl.toneMappingExposure = 1.35;
       }}
     >
       <color attach="background" args={["#05070d"]} />
