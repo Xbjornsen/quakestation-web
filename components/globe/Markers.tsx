@@ -30,15 +30,30 @@ const markerVertex = /* glsl */ `
   varying vec3 vColor;
   varying float vMag;
   varying float vPointSizePx;
+  varying float vFacing;
 
   void main() {
     vColor = aColor;
     vMag = aMag;
+    vec3 worldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+    vec3 toCam = normalize(cameraPosition - worldPos);
+    // Planet is centred at the origin with radius ~1, so the outward
+    // normal at the marker position IS the normalised position vector.
+    vec3 worldNorm = normalize(worldPos);
+    float facing = dot(worldNorm, toCam);
+    vFacing = facing;
+
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
     float size = aMaxRipplePx * uPixelRatio * (4.5 / -mvPos.z);
     float clamped = clamp(size, 14.0, 78.0);
     vPointSizePx = clamped;
-    gl_PointSize = clamped;
+
+    // Cull markers on the planet's far side so the disabled depth test
+    // (needed to keep ring rendering even when the Earth curves toward
+    // the camera near the marker) doesn't let back-side markers leak
+    // through. Smooth transition near the horizon prevents popping.
+    float horizonMask = smoothstep(-0.02, 0.08, facing);
+    gl_PointSize = clamped * horizonMask;
     gl_Position = projectionMatrix * mvPos;
   }
 `;
@@ -48,6 +63,7 @@ const markerFragment = /* glsl */ `
   varying vec3 vColor;
   varying float vMag;
   varying float vPointSizePx;
+  varying float vFacing;
   uniform float uTime;
 
   // A thin ring at radius r, falling off smoothly to either side.
@@ -100,7 +116,8 @@ const markerFragment = /* glsl */ `
 
     float dotA = epicentre * 0.95;
     float ringA = clamp(ringAlpha, 0.0, 0.9);
-    float a = max(dotA, ringA);
+    float horizonFade = smoothstep(0.0, 0.12, vFacing);
+    float a = max(dotA, ringA) * horizonFade;
     if (a < 0.015) discard;
 
     // Epicentre slightly lighter so the centre still feels "hot"; rings
@@ -178,6 +195,7 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
         fragmentShader={markerFragment}
         uniforms={uniforms}
         transparent
+        depthTest={false}
         depthWrite={false}
         blending={THREE.NormalBlending}
         toneMapped={false}
