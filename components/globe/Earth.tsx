@@ -1,6 +1,6 @@
 "use client";
 
-import { useFrame, useLoader } from "@react-three/fiber";
+import { useFrame, useLoader, useThree } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { earthFragment, earthVertex } from "./shaders/earth";
@@ -12,13 +12,22 @@ const SPEC = "/textures/earth_spec.jpg";
 
 export function Earth() {
   const matRef = useRef<THREE.ShaderMaterial>(null);
+  const { gl } = useThree();
+  const maxAniso = gl.capabilities.getMaxAnisotropy();
 
   const [dayMap, nightMap, specMap] = useLoader(THREE.TextureLoader, [DAY, NIGHT, SPEC]);
   dayMap.colorSpace = THREE.SRGBColorSpace;
   nightMap.colorSpace = THREE.SRGBColorSpace;
   specMap.colorSpace = THREE.NoColorSpace;
-  dayMap.anisotropy = 8;
-  nightMap.anisotropy = 8;
+  // Use the GPU's max anisotropic filtering so the texture stays sharp
+  // at oblique angles (poles, terminator) and trilinear mipmap sampling
+  // so it's clean at every zoom level without aliasing.
+  for (const t of [dayMap, nightMap, specMap]) {
+    t.anisotropy = maxAniso;
+    t.minFilter = THREE.LinearMipMapLinearFilter;
+    t.magFilter = THREE.LinearFilter;
+    t.generateMipmaps = true;
+  }
 
   const uniforms = useMemo(
     () => ({
@@ -40,7 +49,7 @@ export function Earth() {
 
   return (
     <mesh>
-      <sphereGeometry args={[1, 256, 256]} />
+      <sphereGeometry args={[1, 512, 512]} />
       <shaderMaterial
         ref={matRef}
         vertexShader={earthVertex}
