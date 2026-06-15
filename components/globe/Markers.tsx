@@ -19,7 +19,7 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
   const data = useMemo(() => {
     return quakes.map((q) => {
       const pos = latLonToVec3(q.lat, q.lon, 1.001);
-      const scale = Math.max(0.004, Math.pow(2, q.mag - 4) * 0.005);
+      const scale = Math.max(0.012, Math.pow(1.7, q.mag - 3) * 0.012);
       const [r, g, b] = magnitudeColor(q.mag);
       return { pos, scale, color: new THREE.Color(r, g, b), id: q.id };
     });

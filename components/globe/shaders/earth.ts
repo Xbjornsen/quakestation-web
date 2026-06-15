@@ -40,8 +40,10 @@ export const earthFragment = /* glsl */ `
     } else {
       // Procedural fallback when textures aren't loaded yet
       float band = smoothstep(0.0, 0.4, abs(vUv.y - 0.5));
-      dayColor = mix(vec3(0.05, 0.18, 0.35), vec3(0.18, 0.32, 0.18), band);
-      nightColor = vec3(0.01, 0.02, 0.05);
+      vec3 ocean = vec3(0.08, 0.22, 0.42);
+      vec3 land = vec3(0.22, 0.40, 0.28);
+      dayColor = mix(ocean, land, band) * 1.3;
+      nightColor = mix(vec3(0.02, 0.04, 0.08), vec3(0.05, 0.04, 0.02), band);
     }
 
     // Specular glint on water (only day side)
