@@ -1,13 +1,13 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
 import { Suspense, useEffect } from "react";
 import * as THREE from "three";
 import { Earth } from "./Earth";
 import { Atmosphere } from "./Atmosphere";
 import { Stars } from "./Stars";
 import { Markers } from "./Markers";
+import { CameraController } from "./CameraController";
 import { useQuakes } from "@/hooks/useQuakes";
 import { useGlobeStore } from "@/store/globeStore";
 
@@ -50,14 +50,7 @@ export default function GlobeScene() {
       </Suspense>
       <Atmosphere />
       <Markers quakes={data?.quakes ?? []} />
-      <OrbitControls
-        enablePan={false}
-        enableDamping
-        dampingFactor={0.08}
-        rotateSpeed={0.4}
-        minDistance={1.4}
-        maxDistance={6}
-      />
+      <CameraController />
     </Canvas>
   );
 }
