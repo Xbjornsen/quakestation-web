@@ -1,11 +1,11 @@
 export const earthVertex = /* glsl */ `
   varying vec2 vUv;
-  varying vec3 vNormal;
+  varying vec3 vWorldNormal;
   varying vec3 vWorldPos;
 
   void main() {
     vUv = uv;
-    vNormal = normalize(normalMatrix * normal);
+    vWorldNormal = normalize(mat3(modelMatrix) * normal);
     vec4 worldPos = modelMatrix * vec4(position, 1.0);
     vWorldPos = worldPos.xyz;
     gl_Position = projectionMatrix * viewMatrix * worldPos;
@@ -22,11 +22,11 @@ export const earthFragment = /* glsl */ `
   uniform float uHasMaps;
 
   varying vec2 vUv;
-  varying vec3 vNormal;
+  varying vec3 vWorldNormal;
   varying vec3 vWorldPos;
 
   void main() {
-    vec3 n = normalize(vNormal);
+    vec3 n = normalize(vWorldNormal);
     vec3 sunDir = normalize(uSunDirection);
 
     float lambert = dot(n, sunDir);
@@ -55,22 +55,26 @@ export const earthFragment = /* glsl */ `
       spec = pow(max(dot(n, halfDir), 0.0), 48.0) * ocean * max(lambert, 0.0);
     }
 
-    vec3 color = mix(nightColor, dayColor, dayBlend) + vec3(spec) * 0.4;
+    vec3 color = mix(nightColor, dayColor, dayBlend) + vec3(spec) * 0.6;
+
+    // Atmospheric scattering near the terminator (sunset/sunrise glow)
+    float terminator = smoothstep(-0.35, 0.15, lambert) * (1.0 - smoothstep(0.0, 0.35, lambert));
+    color += vec3(1.0, 0.55, 0.25) * terminator * 0.18;
 
     // Subtle rim
     vec3 viewDir = normalize(cameraPosition - vWorldPos);
     float rim = pow(1.0 - max(dot(n, viewDir), 0.0), 2.5);
-    color += vec3(0.25, 0.45, 0.85) * rim * 0.18;
+    color += vec3(0.35, 0.55, 0.95) * rim * 0.25;
 
     gl_FragColor = vec4(color, 1.0);
   }
 `;
 
 export const atmosphereVertex = /* glsl */ `
-  varying vec3 vNormal;
+  varying vec3 vWorldNormal;
   varying vec3 vWorldPos;
   void main() {
-    vNormal = normalize(normalMatrix * normal);
+    vWorldNormal = normalize(mat3(modelMatrix) * normal);
     vec4 worldPos = modelMatrix * vec4(position, 1.0);
     vWorldPos = worldPos.xyz;
     gl_Position = projectionMatrix * viewMatrix * worldPos;
@@ -78,15 +82,21 @@ export const atmosphereVertex = /* glsl */ `
 `;
 
 export const atmosphereFragment = /* glsl */ `
-  varying vec3 vNormal;
+  varying vec3 vWorldNormal;
   varying vec3 vWorldPos;
   uniform vec3 uSunDirection;
 
   void main() {
     vec3 viewDir = normalize(cameraPosition - vWorldPos);
-    float fresnel = pow(1.0 - max(dot(normalize(vNormal), viewDir), 0.0), 2.0);
-    float sunFactor = clamp(dot(normalize(vNormal), normalize(uSunDirection)) * 0.5 + 0.6, 0.0, 1.0);
-    vec3 color = mix(vec3(0.15, 0.35, 0.85), vec3(0.55, 0.75, 1.0), sunFactor);
-    gl_FragColor = vec4(color, fresnel * 0.9);
+    vec3 n = normalize(vWorldNormal);
+    float fresnel = pow(1.0 - max(dot(n, viewDir), 0.0), 1.8);
+    float sunDot = dot(n, normalize(uSunDirection));
+    float sunFactor = clamp(sunDot * 0.5 + 0.6, 0.0, 1.0);
+    // Rayleigh-like blue on sunlit side, warm orange on terminator
+    vec3 dayColor = vec3(0.35, 0.6, 1.0);
+    vec3 termColor = vec3(1.0, 0.55, 0.3);
+    float terminator = smoothstep(-0.3, 0.0, sunDot) * (1.0 - smoothstep(0.0, 0.3, sunDot));
+    vec3 color = mix(dayColor * 0.5, dayColor, sunFactor) + termColor * terminator * 0.8;
+    gl_FragColor = vec4(color, fresnel * 1.1);
   }
 `;

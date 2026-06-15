@@ -9,25 +9,26 @@ import { magnitudeColor } from "@/lib/utils";
 import { useGlobeStore } from "@/store/globeStore";
 
 const TMP_OBJECT = new THREE.Object3D();
-const TMP_COLOR = new THREE.Color();
 
 export function Markers({ quakes }: { quakes: Quake[] }) {
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const setSelected = useGlobeStore((s) => s.setSelected);
 
   const count = quakes.length;
+
   const data = useMemo(() => {
     return quakes.map((q) => {
-      const pos = latLonToVec3(q.lat, q.lon, 1.001);
-      const scale = Math.max(0.012, Math.pow(1.7, q.mag - 3) * 0.012);
+      const pos = latLonToVec3(q.lat, q.lon, 1.005);
+      const scale = Math.max(0.014, Math.pow(1.7, q.mag - 3) * 0.014);
       const [r, g, b] = magnitudeColor(q.mag);
-      return { pos, scale, color: new THREE.Color(r, g, b), id: q.id };
+      return { pos, scale, color: new THREE.Color(r, g, b) };
     });
   }, [quakes]);
 
   useEffect(() => {
-    if (!meshRef.current) return;
     const mesh = meshRef.current;
+    if (!mesh || count === 0) return;
+
     data.forEach((d, i) => {
       TMP_OBJECT.position.copy(d.pos);
       TMP_OBJECT.lookAt(0, 0, 0);
@@ -38,20 +39,21 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
     });
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [data]);
+    mesh.count = count;
+  }, [data, count]);
 
   useFrame(({ clock }) => {
-    if (!meshRef.current) return;
+    if (!meshRef.current || count === 0) return;
     const t = clock.elapsedTime;
-    // Subtle pulse on largest quakes
-    data.forEach((d, i) => {
-      const pulse = 1 + Math.sin(t * 2 + i * 0.7) * 0.15 * Math.min(1, d.scale * 30);
+    for (let i = 0; i < count; i++) {
+      const d = data[i];
+      const pulse = 1 + Math.sin(t * 2 + i * 0.7) * 0.2 * Math.min(1, d.scale * 25);
       TMP_OBJECT.position.copy(d.pos);
       TMP_OBJECT.lookAt(0, 0, 0);
       TMP_OBJECT.scale.setScalar(d.scale * pulse);
       TMP_OBJECT.updateMatrix();
-      meshRef.current!.setMatrixAt(i, TMP_OBJECT.matrix);
-    });
+      meshRef.current.setMatrixAt(i, TMP_OBJECT.matrix);
+    }
     meshRef.current.instanceMatrix.needsUpdate = true;
   });
 
@@ -71,8 +73,8 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
       onClick={handleClick}
       frustumCulled={false}
     >
-      <sphereGeometry args={[1, 12, 12]} />
-      <meshBasicMaterial vertexColors toneMapped={false} />
+      <sphereGeometry args={[1, 16, 16]} />
+      <meshBasicMaterial toneMapped={false} />
     </instancedMesh>
   );
 }

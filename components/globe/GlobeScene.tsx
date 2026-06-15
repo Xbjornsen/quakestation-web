@@ -6,6 +6,7 @@ import { Suspense, useEffect } from "react";
 import * as THREE from "three";
 import { Earth } from "./Earth";
 import { Atmosphere } from "./Atmosphere";
+import { Clouds } from "./Clouds";
 import { Stars } from "./Stars";
 import { Markers } from "./Markers";
 import { useQuakes } from "@/hooks/useQuakes";
@@ -46,6 +47,7 @@ export default function GlobeScene() {
       <Stars />
       <Suspense fallback={<FallbackEarth />}>
         <Earth />
+        <Clouds />
       </Suspense>
       <Atmosphere />
       <Markers quakes={data?.quakes ?? []} />

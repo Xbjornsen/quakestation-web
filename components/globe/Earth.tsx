@@ -6,36 +6,19 @@ import * as THREE from "three";
 import { earthFragment, earthVertex } from "./shaders/earth";
 import { sunDirection } from "@/lib/geo";
 
-const DAY = "/textures/earth_day_4k.jpg";
-const NIGHT = "/textures/earth_night_4k.jpg";
-const SPEC = "/textures/earth_spec_2k.jpg";
-
-function tryLoad(url: string): THREE.Texture | null {
-  try {
-    // useLoader will suspend; we handle missing via ErrorBoundary in parent
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const tex = useLoader(THREE.TextureLoader, url);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-  } catch {
-    return null;
-  }
-}
+const DAY = "/textures/earth_day.jpg";
+const NIGHT = "/textures/earth_night.jpg";
+const SPEC = "/textures/earth_spec.jpg";
 
 export function Earth() {
   const matRef = useRef<THREE.ShaderMaterial>(null);
 
-  // Texture loading is best-effort; if files are missing we render the procedural fallback.
-  let dayMap: THREE.Texture | null = null;
-  let nightMap: THREE.Texture | null = null;
-  let specMap: THREE.Texture | null = null;
-  try {
-    dayMap = tryLoad(DAY);
-    nightMap = tryLoad(NIGHT);
-    specMap = tryLoad(SPEC);
-  } catch {
-    // suspense fallback path
-  }
+  const [dayMap, nightMap, specMap] = useLoader(THREE.TextureLoader, [DAY, NIGHT, SPEC]);
+  dayMap.colorSpace = THREE.SRGBColorSpace;
+  nightMap.colorSpace = THREE.SRGBColorSpace;
+  specMap.colorSpace = THREE.NoColorSpace;
+  dayMap.anisotropy = 8;
+  nightMap.anisotropy = 8;
 
   const uniforms = useMemo(
     () => ({
@@ -43,7 +26,7 @@ export function Earth() {
       uNightMap: { value: nightMap },
       uSpecMap: { value: specMap },
       uSunDirection: { value: sunDirection() },
-      uHasMaps: { value: dayMap && nightMap && specMap ? 1.0 : 0.0 },
+      uHasMaps: { value: 1.0 },
     }),
     [dayMap, nightMap, specMap],
   );
