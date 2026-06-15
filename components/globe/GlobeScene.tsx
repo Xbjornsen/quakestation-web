@@ -35,6 +35,7 @@ export default function GlobeScene() {
       className="absolute inset-0"
       camera={{ position: [0, 0, 3.2], fov: 45, near: 0.01, far: 200 }}
       dpr={[1, 2]}
+      raycaster={{ params: { Points: { threshold: 0.02 } } as any }}
       gl={{ antialias: true, powerPreference: "high-performance" }}
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;

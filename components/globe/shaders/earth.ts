@@ -27,76 +27,84 @@ export const earthFragment = /* glsl */ `
 
   void main() {
     vec3 n = normalize(vWorldNormal);
-    vec3 sunDir = normalize(uSunDirection);
-
-    float lambert = dot(n, sunDir);
-    float dayBlend = smoothstep(-0.15, 0.25, lambert);
+    vec3 viewDir = normalize(cameraPosition - vWorldPos);
 
     vec3 dayColor;
-    vec3 nightColor;
     if (uHasMaps > 0.5) {
       dayColor = texture2D(uDayMap, vUv).rgb;
-      nightColor = texture2D(uNightMap, vUv).rgb * 1.4;
     } else {
-      // Procedural fallback when textures aren't loaded yet
       float band = smoothstep(0.0, 0.4, abs(vUv.y - 0.5));
       vec3 ocean = vec3(0.08, 0.22, 0.42);
       vec3 land = vec3(0.22, 0.40, 0.28);
       dayColor = mix(ocean, land, band) * 1.3;
-      nightColor = mix(vec3(0.02, 0.04, 0.08), vec3(0.05, 0.04, 0.02), band);
     }
 
-    // Specular glint on water (only day side)
-    float spec = 0.0;
+    // Soft camera-facing shading so the globe still feels 3D without
+    // a true day/night terminator — front fully lit, edges very mildly
+    // shaded so the silhouette reads.
+    float facing = max(dot(n, viewDir), 0.0);
+    vec3 color = dayColor * (0.78 + 0.22 * facing);
+
+    // Subtle ocean specular toward the camera centre.
     if (uHasMaps > 0.5) {
       float ocean = 1.0 - texture2D(uSpecMap, vUv).r;
-      vec3 viewDir = normalize(cameraPosition - vWorldPos);
-      vec3 halfDir = normalize(sunDir + viewDir);
-      spec = pow(max(dot(n, halfDir), 0.0), 48.0) * ocean * max(lambert, 0.0);
+      float spec = pow(facing, 18.0) * ocean;
+      color += vec3(spec) * 0.18;
     }
 
-    vec3 color = mix(nightColor, dayColor, dayBlend) + vec3(spec) * 0.6;
+    // Very soft inner rim — barely visible. The bulk of the atmosphere
+    // is the back-facing additive shell drawn separately, so the planet
+    // surface only needs the gentlest of edge lifts.
+    float rim = pow(1.0 - facing, 4.0);
+    color += vec3(0.35, 0.55, 0.95) * rim * 0.12;
 
-    // Atmospheric scattering near the terminator (sunset/sunrise glow)
-    float terminator = smoothstep(-0.35, 0.15, lambert) * (1.0 - smoothstep(0.0, 0.35, lambert));
-    color += vec3(1.0, 0.55, 0.25) * terminator * 0.18;
-
-    // Subtle rim
-    vec3 viewDir = normalize(cameraPosition - vWorldPos);
-    float rim = pow(1.0 - max(dot(n, viewDir), 0.0), 2.5);
-    color += vec3(0.35, 0.55, 0.95) * rim * 0.25;
+    // Silence the unused night map / sun direction uniforms.
+    color += texture2D(uNightMap, vUv).rgb * 0.0;
+    color += uSunDirection * 0.0;
 
     gl_FragColor = vec4(color, 1.0);
   }
 `;
 
 export const atmosphereVertex = /* glsl */ `
-  varying vec3 vWorldNormal;
   varying vec3 vWorldPos;
   void main() {
-    vWorldNormal = normalize(mat3(modelMatrix) * normal);
     vec4 worldPos = modelMatrix * vec4(position, 1.0);
     vWorldPos = worldPos.xyz;
     gl_Position = projectionMatrix * viewMatrix * worldPos;
   }
 `;
 
+// Soft outer halo via ray–sphere geometry instead of fresnel:
+//   - for each fragment we recover the view ray
+//   - find the ray's closest approach distance to the planet origin
+//   - brightness scales with how *close* that approach is to the
+//     planet surface, falling off smoothly to zero by the time we reach
+//     the outer edge of the atmosphere shell
+// This eliminates the hard blue ring you get from a naïve back-facing
+// fresnel shell, because the outer silhouette of the shell is the
+// dimmest part, not the brightest.
 export const atmosphereFragment = /* glsl */ `
-  varying vec3 vWorldNormal;
   varying vec3 vWorldPos;
   uniform vec3 uSunDirection;
+  uniform float uPlanetRadius;
+  uniform float uAtmoRadius;
 
   void main() {
-    vec3 viewDir = normalize(cameraPosition - vWorldPos);
-    vec3 n = normalize(vWorldNormal);
-    float fresnel = pow(1.0 - max(dot(n, viewDir), 0.0), 1.8);
-    float sunDot = dot(n, normalize(uSunDirection));
-    float sunFactor = clamp(sunDot * 0.5 + 0.6, 0.0, 1.0);
-    // Rayleigh-like blue on sunlit side, warm orange on terminator
-    vec3 dayColor = vec3(0.35, 0.6, 1.0);
-    vec3 termColor = vec3(1.0, 0.55, 0.3);
-    float terminator = smoothstep(-0.3, 0.0, sunDot) * (1.0 - smoothstep(0.0, 0.3, sunDot));
-    vec3 color = mix(dayColor * 0.5, dayColor, sunFactor) + termColor * terminator * 0.8;
-    gl_FragColor = vec4(color, fresnel * 1.1);
+    vec3 rayDir = normalize(vWorldPos - cameraPosition);
+    vec3 toCenter = -cameraPosition;
+    float t = dot(toCenter, rayDir);
+    vec3 closest = cameraPosition + rayDir * t;
+    float closestDist = length(closest);
+
+    // Distance from the planet surface, clamped to the atmosphere band.
+    float band = uAtmoRadius - uPlanetRadius;
+    float fromSurface = clamp(closestDist - uPlanetRadius, 0.0, band);
+    float n = fromSurface / band;             // 0 at surface, 1 at outer edge
+    float intensity = pow(1.0 - n, 3.0);      // bright near surface, smooth falloff
+
+    vec3 color = vec3(0.32, 0.55, 0.95) * intensity * 0.85;
+    color += uSunDirection * 0.0;
+    gl_FragColor = vec4(color, 1.0);
   }
 `;
