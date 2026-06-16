@@ -7,7 +7,11 @@ import { Earth } from "./Earth";
 import { Atmosphere } from "./Atmosphere";
 import { Stars } from "./Stars";
 import { Markers } from "./Markers";
+import { SwarmSpines } from "./SwarmSpines";
+import { FocusPulse } from "./FocusPulse";
 import { CameraController } from "./CameraController";
+import { useMemo } from "react";
+import { detectSwarms } from "@/lib/swarm";
 import { useQuakes } from "@/hooks/useQuakes";
 import { useGlobeStore } from "@/store/globeStore";
 
@@ -25,10 +29,17 @@ export default function GlobeScene() {
   const days = useGlobeStore((s) => s.days);
   const { data } = useQuakes({ minMagnitude: minMag, days });
   const setQuakes = useGlobeStore((s) => s.setQuakes);
+  const setSwarmCount = useGlobeStore((s) => s.setSwarmCount);
 
   useEffect(() => {
     if (data?.quakes) setQuakes(data.quakes);
   }, [data, setQuakes]);
+
+  const { swarms, loose } = useMemo(() => detectSwarms(data?.quakes ?? []), [data?.quakes]);
+
+  useEffect(() => {
+    setSwarmCount(swarms.length);
+  }, [swarms, setSwarmCount]);
 
   return (
     <Canvas
@@ -49,7 +60,9 @@ export default function GlobeScene() {
         <Earth />
       </Suspense>
       <Atmosphere />
-      <Markers quakes={data?.quakes ?? []} />
+      <Markers quakes={loose} />
+      <SwarmSpines swarms={swarms} />
+      <FocusPulse />
       <CameraController />
     </Canvas>
   );

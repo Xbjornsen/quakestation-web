@@ -17,6 +17,7 @@ export function CameraController() {
   const controlsRef = useRef<any>(null);
   const flyToTarget = useGlobeStore((s) => s.flyToTarget);
   const clearFlyTo = useGlobeStore((s) => s.clearFlyTo);
+  const autoRotate = useGlobeStore((s) => s.autoRotate);
   const { camera } = useThree();
 
   const flightRef = useRef<{ dist: number; target: THREE.Vector3 } | null>(null);
@@ -66,6 +67,9 @@ export function CameraController() {
       rotateSpeed={0.4}
       minDistance={1.4}
       maxDistance={6}
+      // Pause auto-rotation during a fly-to so the two don't fight.
+      autoRotate={autoRotate && !flyToTarget}
+      autoRotateSpeed={0.35}
     />
   );
 }

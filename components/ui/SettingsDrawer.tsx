@@ -7,7 +7,15 @@ export function SettingsDrawer() {
   const s = useGlobeStore();
 
   return (
-    <div className="pointer-events-auto fixed inset-y-0 right-0 z-30 flex w-full max-w-sm flex-col border-l border-white/10 bg-ink-900/95 backdrop-blur-xl">
+    <>
+      {/* Transparent scrim — clicking the globe (or anywhere outside the
+          drawer) closes Settings. */}
+      <div
+        className="pointer-events-auto fixed inset-0 z-20"
+        onClick={() => s.setSettingsOpen(false)}
+        aria-hidden
+      />
+      <div className="pointer-events-auto fixed inset-y-0 right-0 z-30 flex w-full max-w-sm flex-col border-l border-white/10 bg-ink-900/95 backdrop-blur-xl">
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
         <h2 className="text-sm font-semibold uppercase tracking-[0.3em]">Settings</h2>
         <button
@@ -88,8 +96,17 @@ export function SettingsDrawer() {
             onChange={() => s.toggle("showHeatmap")}
           />
         </Section>
+
+        <Section title="Globe">
+          <Toggle
+            label="Auto-rotate"
+            checked={s.autoRotate}
+            onChange={() => s.toggle("autoRotate")}
+          />
+        </Section>
       </div>
     </div>
+    </>
   );
 }
 
