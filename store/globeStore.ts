@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import type { Quake } from "@/lib/usgs";
 import type { Swarm } from "@/lib/swarm";
+import type { SelectedFeature } from "@/lib/features";
 
 export type MarkerColorMode = "magnitude" | "depth";
 
@@ -10,6 +11,9 @@ interface GlobeState {
   quakes: Quake[];
   selected: Quake | null;
   selectedSwarm: Swarm | null;
+  // A selected volcano/peak overlay feature. Mutually exclusive with
+  // `selected` / `selectedSwarm` — selecting one clears the others.
+  selectedFeature: SelectedFeature | null;
   // When a quake is opened by drilling into a swarm's event list, we
   // remember that swarm so the detail view can offer "Back to swarm".
   swarmReturn: Swarm | null;
@@ -27,6 +31,7 @@ interface GlobeState {
   setQuakes: (q: Quake[]) => void;
   setSelected: (q: Quake | null) => void;
   setSelectedSwarm: (s: Swarm | null) => void;
+  setSelectedFeature: (f: SelectedFeature | null) => void;
   setSwarmCount: (n: number) => void;
   setMinMagnitude: (m: number) => void;
   setDays: (d: number) => void;
@@ -37,6 +42,7 @@ interface GlobeState {
   clearFlyTo: () => void;
   focusQuake: (q: Quake) => void;
   focusSwarm: (s: Swarm) => void;
+  focusFeature: (f: SelectedFeature) => void;
   drillIntoQuake: (q: Quake, swarm: Swarm) => void;
 }
 
@@ -44,6 +50,7 @@ export const useGlobeStore = create<GlobeState>((set) => ({
   quakes: [],
   selected: null,
   selectedSwarm: null,
+  selectedFeature: null,
   swarmReturn: null,
   minMagnitude: 2.5,
   days: 1,
@@ -59,6 +66,7 @@ export const useGlobeStore = create<GlobeState>((set) => ({
   setQuakes: (quakes) => set({ quakes }),
   setSelected: (selected) => set({ selected }),
   setSelectedSwarm: (selectedSwarm) => set({ selectedSwarm }),
+  setSelectedFeature: (selectedFeature) => set({ selectedFeature }),
   setSwarmCount: (swarmCount) => set({ swarmCount }),
   setMinMagnitude: (minMagnitude) => set({ minMagnitude }),
   setDays: (days) => set({ days }),
@@ -73,6 +81,7 @@ export const useGlobeStore = create<GlobeState>((set) => ({
     set({
       selected: q,
       selectedSwarm: null,
+      selectedFeature: null,
       swarmReturn: null,
       flyToTarget: { lat: q.lat, lon: q.lon },
     }),
@@ -81,7 +90,18 @@ export const useGlobeStore = create<GlobeState>((set) => ({
     set({
       selectedSwarm: s,
       selected: null,
+      selectedFeature: null,
       flyToTarget: { lat: s.centroidLat, lon: s.centroidLon },
+    }),
+  // Clicking a volcano cone or peak marker: show its detail card, clear
+  // any quake/swarm selection, and fly to it.
+  focusFeature: (f) =>
+    set({
+      selectedFeature: f,
+      selected: null,
+      selectedSwarm: null,
+      swarmReturn: null,
+      flyToTarget: { lat: f.data.lat, lon: f.data.lon },
     }),
   // Clicking an event inside a swarm list: show that quake but remember
   // the swarm so we can offer a "Back to swarm" link.
@@ -89,6 +109,7 @@ export const useGlobeStore = create<GlobeState>((set) => ({
     set({
       selected: q,
       selectedSwarm: null,
+      selectedFeature: null,
       swarmReturn: swarm,
       flyToTarget: { lat: q.lat, lon: q.lon },
     }),

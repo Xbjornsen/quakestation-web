@@ -3,7 +3,16 @@
 import { useGlobeStore } from "@/store/globeStore";
 import { formatRelative, magnitudeColor } from "@/lib/utils";
 import type { Quake } from "@/lib/usgs";
-import { X, ExternalLink, ArrowDownWideNarrow, Clock, ChevronLeft } from "lucide-react";
+import type { SelectedFeature } from "@/lib/features";
+import {
+  X,
+  ExternalLink,
+  ArrowDownWideNarrow,
+  Clock,
+  ChevronLeft,
+  Mountain,
+  Flame,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 // One bottom-left surface handles both detail modes:
@@ -14,12 +23,68 @@ import { useMemo, useState } from "react";
 export function DetailPanel() {
   const selected = useGlobeStore((s) => s.selected);
   const selectedSwarm = useGlobeStore((s) => s.selectedSwarm);
+  const selectedFeature = useGlobeStore((s) => s.selectedFeature);
 
-  if (!selected && !selectedSwarm) return null;
+  if (!selected && !selectedSwarm && !selectedFeature) return null;
 
   return (
     <div className="pointer-events-auto fixed inset-x-3 bottom-3 z-20 mx-auto flex max-h-[72vh] max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-ink-900/95 shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:bottom-6 sm:left-6 sm:max-w-sm">
-      {selectedSwarm ? <SwarmDetail /> : selected ? <QuakeDetail quake={selected} /> : null}
+      {selectedSwarm ? (
+        <SwarmDetail />
+      ) : selectedFeature ? (
+        <FeatureDetail feature={selectedFeature} />
+      ) : selected ? (
+        <QuakeDetail quake={selected} />
+      ) : null}
+    </div>
+  );
+}
+
+function FeatureDetail({ feature }: { feature: SelectedFeature }) {
+  const clear = useGlobeStore((s) => s.setSelectedFeature);
+  const isVolcano = feature.kind === "volcano";
+  const accent = isVolcano ? "text-accent-amber/80" : "text-accent-cyan";
+
+  return (
+    <div className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div
+            className={`inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.25em] ${accent}`}
+          >
+            {isVolcano ? <Flame className="h-3 w-3" /> : <Mountain className="h-3 w-3" />}
+            {isVolcano ? "Volcano" : "Mountain Peak"}
+          </div>
+          <h2 className="mt-1 truncate text-lg font-semibold">{feature.data.name}</h2>
+          <div className="mt-0.5 truncate text-sm text-white/70">
+            {isVolcano ? feature.data.country : feature.data.range}
+          </div>
+        </div>
+        <button
+          onClick={() => clear(null)}
+          aria-label="Close"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full hover:bg-white/10"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
+        <Stat label="Elevation" value={`${feature.data.elevation_m.toLocaleString()} m`} />
+        {feature.kind === "volcano" ? (
+          <>
+            <Stat label="Type" value={feature.data.type} />
+            <Stat label="Last erupt." value={feature.data.last_eruption} />
+          </>
+        ) : (
+          <>
+            <Stat label="Prominence" value={`${feature.data.prominence_m.toLocaleString()} m`} />
+            <Stat label="Range" value={feature.data.range} />
+          </>
+        )}
+        <Stat label="Lat" value={feature.data.lat.toFixed(2)} />
+        <Stat label="Lon" value={feature.data.lon.toFixed(2)} />
+      </div>
     </div>
   );
 }
