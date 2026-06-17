@@ -15,6 +15,7 @@ import { CameraController } from "./CameraController";
 import { useMemo } from "react";
 import { detectSwarms, type Swarm } from "@/lib/swarm";
 import { useQuakes } from "@/hooks/useQuakes";
+import { REPLAY_MIN_MAG } from "@/lib/usgs";
 import { useGlobeStore } from "@/store/globeStore";
 
 // Stable empty reference so suppressing swarm towers during replay doesn't
@@ -50,14 +51,27 @@ export default function GlobeScene() {
     setSwarmCount(swarms.length);
   }, [swarms, setSwarmCount]);
 
-  // During replay, flatten to individual markers up to the playhead and hide
-  // swarm towers so the eye watches events appear chronologically. Live view
-  // keeps the normal loose-markers + swarm-towers split.
+  // During replay, show only a rolling time window around the playhead (and
+  // hide swarm towers), so events appear when their moment arrives and clear
+  // shortly after — a sequence, not an ever-growing pile. Live view keeps the
+  // normal loose-markers + swarm-towers split.
   const replaying = replayTime != null;
   const markerQuakes = useMemo(() => {
-    if (!replaying) return loose;
+    if (!replaying || replayTime == null) return loose;
     const all = data?.quakes ?? [];
-    return all.filter((q) => q.time <= replayTime!);
+    if (all.length === 0) return all;
+    let lo = Infinity;
+    let hi = -Infinity;
+    for (const q of all) {
+      if (q.time < lo) lo = q.time;
+      if (q.time > hi) hi = q.time;
+    }
+    // Each event stays visible for ~12% of the timeline, then ages out. Only
+    // significant events (M4+) replay, so they read as a sparse sequence.
+    const windowMs = Math.max(1, (hi - lo) * 0.12);
+    return all.filter(
+      (q) => q.mag >= REPLAY_MIN_MAG && q.time <= replayTime && q.time > replayTime - windowMs,
+    );
   }, [replaying, replayTime, data, loose]);
   const spineSwarms = replaying ? NO_SWARMS : swarms;
 

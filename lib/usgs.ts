@@ -1,3 +1,7 @@
+// Replay tours only significant events so they appear sparsely and in
+// sequence rather than flooding the globe with M2.5 background noise.
+export const REPLAY_MIN_MAG = 4;
+
 export interface Quake {
   id: string;
   mag: number;

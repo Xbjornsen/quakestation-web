@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { Play, Pause, History, X } from "lucide-react";
 import { useGlobeStore } from "@/store/globeStore";
-import type { Quake } from "@/lib/usgs";
+import { REPLAY_MIN_MAG, type Quake } from "@/lib/usgs";
 
 // Wall-clock seconds to play the whole window end to end.
 const PLAY_SECONDS = 24;
@@ -49,9 +49,11 @@ export function ReplayBar() {
 
   const active = replayTime != null;
   const head = replayTime ?? min;
-  const shown = useMemo(
-    () => (active ? quakes.filter((q) => q.time <= head).length : quakes.length),
-    [active, quakes, head],
+  // Replay tours only significant events.
+  const sig = useMemo(() => quakes.filter((q) => q.mag >= REPLAY_MIN_MAG), [quakes]);
+  const shownSig = useMemo(
+    () => (active ? sig.filter((q) => q.time <= head).length : sig.length),
+    [active, sig, head],
   );
 
   // rAF playback. The precise playhead lives in a local accumulator; we push
@@ -84,7 +86,9 @@ export function ReplayBar() {
         let best: Quake | null = null;
         for (const q of sorted) {
           if (q.time > headMs) break; // sorted ascending — rest are future
-          if (q.time > lastFlyHead && (!best || q.mag > best.mag)) best = q;
+          if (q.mag >= REPLAY_MIN_MAG && q.time > lastFlyHead && (!best || q.mag > best.mag)) {
+            best = q;
+          }
         }
         if (best) {
           flyTo(best.lat, best.lon);
@@ -126,6 +130,7 @@ export function ReplayBar() {
         >
           <History className="h-4 w-4 text-accent-cyan" />
           Replay
+          <span className="text-white/40">· M{REPLAY_MIN_MAG.toFixed(1)}+</span>
         </button>
       ) : (
         <div className="pointer-events-auto flex w-full max-w-xl items-center gap-3 rounded-2xl border border-white/10 bg-ink-900/80 px-3 py-2.5 backdrop-blur-md">
@@ -138,6 +143,12 @@ export function ReplayBar() {
           </button>
 
           <div className="flex min-w-0 flex-1 flex-col gap-1">
+            <div className="flex items-center justify-between text-[9px] uppercase tracking-[0.18em] text-white/45">
+              <span>Significant events · M{REPLAY_MIN_MAG.toFixed(1)}+</span>
+              <span className="font-mono">
+                {shownSig.toLocaleString()}/{sig.length.toLocaleString()}
+              </span>
+            </div>
             <input
               type="range"
               min={min}
@@ -150,12 +161,7 @@ export function ReplayBar() {
               }}
               className="w-full accent-accent-cyan"
             />
-            <div className="flex items-center justify-between font-mono text-[10px] text-white/45">
-              <span className="text-white/70">{fmt(head)}</span>
-              <span>
-                {shown.toLocaleString()} / {quakes.length.toLocaleString()}
-              </span>
-            </div>
+            <div className="font-mono text-[10px] text-white/70">{fmt(head)}</div>
           </div>
 
           <button
