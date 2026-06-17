@@ -99,6 +99,7 @@ function computeStats(quakes: Quake[], days: number): Stats {
 export default function StatsPage() {
   const minMagnitude = useGlobeStore((s) => s.minMagnitude);
   const days = useGlobeStore((s) => s.days);
+  const setDays = useGlobeStore((s) => s.setDays);
   const { data, isLoading, isError } = useQuakes({ minMagnitude, days });
 
   const quakes = useMemo(() => data?.quakes ?? [], [data]);
@@ -125,6 +126,27 @@ export default function StatsPage() {
               {days === 1 ? "day" : "days"} · magnitude{" "}
               <span className="font-mono text-white/70">{minMagnitude}+</span>
             </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-[0.25em] text-white/40">
+              Window
+            </span>
+            <div className="flex gap-1.5">
+              {[1, 7, 30].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setDays(d)}
+                  className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    days === d
+                      ? "border-accent-cyan/60 bg-accent-cyan/10 text-accent-cyan"
+                      : "border-white/15 bg-white/5 text-white/65 hover:bg-white/10"
+                  }`}
+                >
+                  {d}d
+                </button>
+              ))}
+            </div>
           </div>
         </header>
 
@@ -267,7 +289,7 @@ function Headline({
 function MagHistogram({ histogram }: { histogram: number[] }) {
   const max = Math.max(1, ...histogram);
   return (
-    <div className="flex h-44 items-end gap-2 sm:gap-3">
+    <div className="flex h-44 items-stretch gap-2 sm:gap-3">
       {MAG_BUCKETS.map((b, i) => {
         const count = histogram[i];
         const pct = (count / max) * 100;
@@ -309,7 +331,7 @@ function PerDayChart({
   // For wide windows (30d) labels get crowded; only label a few.
   const labelEvery = days > 14 ? 5 : days > 7 ? 2 : 1;
   return (
-    <div className="flex h-44 items-end gap-1">
+    <div className="flex h-44 items-stretch gap-1">
       {perDay.map((d) => {
         const pct = (d.count / max) * 100;
         const ago = perDay.length - 1 - d.day;
