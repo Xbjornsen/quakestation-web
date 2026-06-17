@@ -47,8 +47,8 @@ See the plan in the design doc — milestones M1–M10.
 - [x] M4 — Header pills + settings drawer
 - [ ] M2 — 8K textures, clouds, atmospheric scattering pass
 - [ ] M5 — Swarm detection + replay
-- [ ] M6 — Plates / volcanoes / peaks overlays
-- [ ] M7 — Heatmap (warm baseline PNG + live worker)
+- [ ] M6 — Plates / volcanoes overlays
+- [x] M7 — Seismic density heatmap (additive glow splats)
 - [ ] M8 — Deep links + OG images
 - [ ] M9 — Stats dashboard + embed
 - [ ] M10 — Polish + Lighthouse pass
