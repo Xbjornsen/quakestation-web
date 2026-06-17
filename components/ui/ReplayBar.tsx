@@ -6,10 +6,11 @@ import { useGlobeStore } from "@/store/globeStore";
 import type { Quake } from "@/lib/usgs";
 
 // Wall-clock seconds to play the whole window end to end.
-const PLAY_SECONDS = 16;
-// Minimum wall-clock gap between camera fly-tos during playback, so the
-// camera jumps to the action cinematically instead of lurching every frame.
-const FLY_INTERVAL = 1100;
+const PLAY_SECONDS = 24;
+// Minimum wall-clock gap between camera fly-tos during playback. Long enough
+// to land on an event and watch a ripple emanate before flying to the next,
+// rather than lurching around frantically.
+const FLY_INTERVAL = 1900;
 
 function fmt(ts: number): string {
   return new Date(ts).toLocaleString(undefined, {
