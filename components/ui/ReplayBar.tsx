@@ -3,9 +3,13 @@
 import { useEffect, useMemo } from "react";
 import { Play, Pause, History, X } from "lucide-react";
 import { useGlobeStore } from "@/store/globeStore";
+import type { Quake } from "@/lib/usgs";
 
 // Wall-clock seconds to play the whole window end to end.
 const PLAY_SECONDS = 16;
+// Minimum wall-clock gap between camera fly-tos during playback, so the
+// camera jumps to the action cinematically instead of lurching every frame.
+const FLY_INTERVAL = 1100;
 
 function fmt(ts: number): string {
   return new Date(ts).toLocaleString(undefined, {
@@ -22,6 +26,11 @@ export function ReplayBar() {
   const playing = useGlobeStore((s) => s.replayPlaying);
   const setReplayTime = useGlobeStore((s) => s.setReplayTime);
   const setReplayPlaying = useGlobeStore((s) => s.setReplayPlaying);
+  const flyTo = useGlobeStore((s) => s.flyTo);
+
+  // Quakes in chronological order, for picking what just happened as the
+  // playhead sweeps forward.
+  const sorted = useMemo(() => [...quakes].sort((a, b) => a.time - b.time), [quakes]);
 
   const { min, max } = useMemo(() => {
     let lo = Infinity;
@@ -54,6 +63,8 @@ export function ReplayBar() {
     if (headMs >= max) headMs = min; // restart if parked at the end
     let last = performance.now();
     let lastPush = 0;
+    let lastFly = 0;
+    let lastFlyHead = headMs - 1; // so the very first quake is eligible
     let raf = requestAnimationFrame(function tick(now) {
       headMs += (now - last) * rate;
       last = now;
@@ -66,10 +77,24 @@ export function ReplayBar() {
         setReplayTime(headMs);
         lastPush = now;
       }
+      // Camera follow: every FLY_INTERVAL, jump to the biggest quake that
+      // crossed the playhead since the last jump.
+      if (now - lastFly >= FLY_INTERVAL) {
+        let best: Quake | null = null;
+        for (const q of sorted) {
+          if (q.time > headMs) break; // sorted ascending — rest are future
+          if (q.time > lastFlyHead && (!best || q.mag > best.mag)) best = q;
+        }
+        if (best) {
+          flyTo(best.lat, best.lon);
+          lastFly = now;
+          lastFlyHead = headMs;
+        }
+      }
       raf = requestAnimationFrame(tick);
     });
     return () => cancelAnimationFrame(raf);
-  }, [playing, min, max, setReplayTime, setReplayPlaying]);
+  }, [playing, min, max, sorted, flyTo, setReplayTime, setReplayPlaying]);
 
   const enter = () => {
     setReplayTime(min);
