@@ -26,6 +26,11 @@ interface GlobeState {
   settingsOpen: boolean;
   swarmCount: number;
   flyToTarget: { lat: number; lon: number } | null;
+  // Time-lapse replay: when `replayTime` is non-null the globe shows only
+  // quakes that occurred at or before that timestamp (the playhead). Null
+  // means "live" — show everything with the normal swarm grouping.
+  replayTime: number | null;
+  replayPlaying: boolean;
   setQuakes: (q: Quake[]) => void;
   setSelected: (q: Quake | null) => void;
   setSelectedSwarm: (s: Swarm | null) => void;
@@ -36,6 +41,8 @@ interface GlobeState {
   toggle: (key: "showPlates" | "showVolcanoes" | "autoRotate") => void;
   setColorMode: (m: MarkerColorMode) => void;
   setSettingsOpen: (b: boolean) => void;
+  setReplayTime: (t: number | null) => void;
+  setReplayPlaying: (b: boolean) => void;
   flyTo: (lat: number, lon: number) => void;
   clearFlyTo: () => void;
   focusQuake: (q: Quake) => void;
@@ -59,6 +66,8 @@ export const useGlobeStore = create<GlobeState>((set) => ({
   settingsOpen: false,
   swarmCount: 0,
   flyToTarget: null,
+  replayTime: null,
+  replayPlaying: false,
   setQuakes: (quakes) => set({ quakes }),
   setSelected: (selected) => set({ selected }),
   setSelectedSwarm: (selectedSwarm) => set({ selectedSwarm }),
@@ -69,6 +78,8 @@ export const useGlobeStore = create<GlobeState>((set) => ({
   toggle: (key) => set((s) => ({ [key]: !s[key] }) as Partial<GlobeState>),
   setColorMode: (colorMode) => set({ colorMode }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
+  setReplayTime: (replayTime) => set({ replayTime }),
+  setReplayPlaying: (replayPlaying) => set({ replayPlaying }),
   flyTo: (lat, lon) => set({ flyToTarget: { lat, lon } }),
   clearFlyTo: () => set({ flyToTarget: null }),
   // Selecting a single quake (e.g. clicking a marker) clears any swarm

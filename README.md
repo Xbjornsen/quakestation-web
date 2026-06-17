@@ -29,14 +29,14 @@ No API keys required.
 
 For the photoreal globe, drop these files into `public/textures/`:
 
-- `earth_day_4k.jpg` — NASA Blue Marble (4096 × 2048)
-- `earth_night_4k.jpg` — NASA Black Marble (4096 × 2048)
-- `earth_spec_2k.jpg` — land/ocean mask (white = land, black = ocean)
+- `earth_day.jpg` — NASA Blue Marble
+- `earth_night.jpg` — NASA Black Marble
+- `earth_spec.jpg` — land/ocean mask (white = land, black = ocean)
 
 Without them the globe renders a procedural fallback so dev still works.
 
-A future PR will add 8K assets behind a `prefers-reduced-motion` / mobile check,
-plus a cloud layer and atmospheric scattering shader pass.
+A future PR will gate the heaviest assets behind a `prefers-reduced-motion` /
+mobile check.
 
 ## Roadmap
 
@@ -45,13 +45,15 @@ See the plan in the design doc — milestones M1–M10.
 - [x] M1 — Project scaffold, globe canvas, day/night shader
 - [x] M3 — USGS feed + instanced markers + detail panel
 - [x] M4 — Header pills + settings drawer
-- [ ] M2 — 8K textures, clouds, atmospheric scattering pass
-- [ ] M5 — Swarm detection + replay
-- [ ] M6 — Plates / volcanoes overlays
+- [x] M6 — Plates / volcanoes overlays
+- [x] M9 — Stats dashboard + embeddable globe
+- [x] M5 — Swarm detection + time-lapse replay
+- [x] M8 — Deep links + OG image
+- [ ] M2 — 8K textures + atmospheric scattering pass
 - [ ] M7 — Seismic density heatmap (shelved; glow-splat prototype on branch `shelf/heatmap-glow-splats`, needs proper render-to-texture rebuild)
-- [ ] M8 — Deep links + OG images
-- [ ] M9 — Stats dashboard + embed
 - [ ] M10 — Polish + Lighthouse pass
+
+Live feed auto-refreshes every 60s (USGS proxy is cached 60s server-side).
 
 ## Data sources
 

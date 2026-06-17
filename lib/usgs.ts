@@ -52,6 +52,23 @@ export function buildUsgsUrl(q: QuakeQuery): string {
   return `https://earthquake.usgs.gov/fdsnws/event/1/query?${params.toString()}`;
 }
 
+// Fetch a single event's headline fields by USGS id, for server-side deep-link
+// metadata (so a shared ?quake=<id> link gets a relevant title/description).
+export async function fetchQuakeById(
+  id: string,
+): Promise<{ mag: number; place: string } | null> {
+  const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=${encodeURIComponent(
+    id,
+  )}&format=geojson`;
+  const res = await fetch(url, { next: { revalidate: 300 } });
+  if (!res.ok) return null;
+  const j = (await res.json()) as {
+    properties?: { mag: number | null; place: string | null };
+  };
+  if (!j.properties || j.properties.mag == null) return null;
+  return { mag: j.properties.mag, place: j.properties.place ?? "Unknown location" };
+}
+
 export function parseUsgs(raw: UsgsResponse): Quake[] {
   return raw.features
     .filter((f) => f.properties.mag != null && f.geometry?.coordinates?.length === 3)

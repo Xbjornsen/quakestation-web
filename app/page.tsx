@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { BarChart3 } from "lucide-react";
 import { HeaderPills } from "@/components/ui/HeaderPills";
@@ -5,11 +7,41 @@ import { HeaderStats } from "@/components/ui/HeaderStats";
 import { DetailPanel } from "@/components/ui/DetailPanel";
 import { SettingsButton } from "@/components/ui/SettingsButton";
 import { Legend } from "@/components/ui/Legend";
+import { LiveIndicator } from "@/components/ui/LiveIndicator";
+import { ReplayBar } from "@/components/ui/ReplayBar";
+import { DeepLinkSync } from "@/components/ui/DeepLinkSync";
 import { GlobeMount } from "@/components/globe/GlobeMount";
+import { fetchQuakeById } from "@/lib/usgs";
+
+// A shared ?quake=<id> link gets a relevant title/description for previews.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}): Promise<Metadata> {
+  const sp = await searchParams;
+  const id = typeof sp.quake === "string" ? sp.quake : undefined;
+  if (!id) return {};
+  const q = await fetchQuakeById(id).catch(() => null);
+  if (!q) return {};
+  const title = `M${q.mag.toFixed(1)} — ${q.place} · QuakeStation`;
+  const description = `Magnitude ${q.mag.toFixed(
+    1,
+  )} earthquake near ${q.place}. Explore it live on the QuakeStation 3D globe.`;
+  return {
+    title,
+    description,
+    openGraph: { title, description },
+    twitter: { title, description },
+  };
+}
 
 export default function Page() {
   return (
     <main className="relative h-dvh w-screen overflow-hidden bg-ink-950">
+      <Suspense fallback={null}>
+        <DeepLinkSync />
+      </Suspense>
       <GlobeMount />
       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
         <header className="pointer-events-auto flex items-start justify-between gap-3 p-4 sm:p-6">
@@ -19,6 +51,7 @@ export default function Page() {
                 QuakeStation
               </h1>
               <HeaderStats />
+              <LiveIndicator />
             </div>
             <HeaderPills />
           </div>
@@ -36,6 +69,7 @@ export default function Page() {
         <div className="flex-1" />
         <Legend />
       </div>
+      <ReplayBar />
       <DetailPanel />
     </main>
   );

@@ -13,9 +13,13 @@ import { Volcanoes } from "./Volcanoes";
 import { PoleMarkers } from "./PoleMarkers";
 import { CameraController } from "./CameraController";
 import { useMemo } from "react";
-import { detectSwarms } from "@/lib/swarm";
+import { detectSwarms, type Swarm } from "@/lib/swarm";
 import { useQuakes } from "@/hooks/useQuakes";
 import { useGlobeStore } from "@/store/globeStore";
+
+// Stable empty reference so suppressing swarm towers during replay doesn't
+// hand SwarmSpines a fresh array each render.
+const NO_SWARMS: Swarm[] = [];
 
 function FallbackEarth() {
   return (
@@ -34,6 +38,7 @@ export default function GlobeScene() {
   const setSwarmCount = useGlobeStore((s) => s.setSwarmCount);
   const showPlates = useGlobeStore((s) => s.showPlates);
   const showVolcanoes = useGlobeStore((s) => s.showVolcanoes);
+  const replayTime = useGlobeStore((s) => s.replayTime);
 
   useEffect(() => {
     if (data?.quakes) setQuakes(data.quakes);
@@ -44,6 +49,17 @@ export default function GlobeScene() {
   useEffect(() => {
     setSwarmCount(swarms.length);
   }, [swarms, setSwarmCount]);
+
+  // During replay, flatten to individual markers up to the playhead and hide
+  // swarm towers so the eye watches events appear chronologically. Live view
+  // keeps the normal loose-markers + swarm-towers split.
+  const replaying = replayTime != null;
+  const markerQuakes = useMemo(() => {
+    if (!replaying) return loose;
+    const all = data?.quakes ?? [];
+    return all.filter((q) => q.time <= replayTime!);
+  }, [replaying, replayTime, data, loose]);
+  const spineSwarms = replaying ? NO_SWARMS : swarms;
 
   return (
     <Canvas
@@ -66,8 +82,8 @@ export default function GlobeScene() {
       <Atmosphere />
       {showPlates && <Plates />}
       {showVolcanoes && <Volcanoes />}
-      <Markers quakes={loose} />
-      <SwarmSpines swarms={swarms} />
+      <Markers quakes={markerQuakes} />
+      <SwarmSpines swarms={spineSwarms} />
       <PoleMarkers />
       <CameraController />
     </Canvas>
