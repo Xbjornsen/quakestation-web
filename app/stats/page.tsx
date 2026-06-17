@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { ArrowLeft, Activity, Layers, Flame, Gauge } from "lucide-react";
+import { ArrowLeft, Activity, Layers, Flame, Gauge, Mountain } from "lucide-react";
 import { useGlobeStore } from "@/store/globeStore";
 import { useQuakes } from "@/hooks/useQuakes";
+import { useVolcanoes } from "@/hooks/useVolcanoes";
 import { detectSwarms } from "@/lib/swarm";
 import { magnitudeColor } from "@/lib/utils";
 import type { Quake } from "@/lib/usgs";
+import type { Volcano } from "@/lib/features";
 
 function rgbCss([r, g, b]: [number, number, number], alpha = 1): string {
   const to = (v: number) => Math.round(v * 255);
@@ -96,14 +98,41 @@ function computeStats(quakes: Quake[], days: number): Stats {
   };
 }
 
+interface VolcanoStats {
+  total: number;
+  highest: Volcano | null;
+  types: Array<{ name: string; count: number }>;
+  countries: Array<{ name: string; count: number }>;
+}
+
+function computeVolcanoStats(volcanoes: Volcano[]): VolcanoStats {
+  const byType = new Map<string, number>();
+  const byCountry = new Map<string, number>();
+  let highest: Volcano | null = null;
+  for (const v of volcanoes) {
+    byType.set(v.type, (byType.get(v.type) ?? 0) + 1);
+    byCountry.set(v.country, (byCountry.get(v.country) ?? 0) + 1);
+    if (!highest || v.elevation_m > highest.elevation_m) highest = v;
+  }
+  const top = (m: Map<string, number>, n: number) =>
+    [...m.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, n);
+  return { total: volcanoes.length, highest, types: top(byType, 8), countries: top(byCountry, 8) };
+}
+
 export default function StatsPage() {
   const minMagnitude = useGlobeStore((s) => s.minMagnitude);
   const days = useGlobeStore((s) => s.days);
   const setDays = useGlobeStore((s) => s.setDays);
   const { data, isLoading, isError } = useQuakes({ minMagnitude, days });
+  const { data: volcanoData } = useVolcanoes(true);
 
   const quakes = useMemo(() => data?.quakes ?? [], [data]);
   const stats = useMemo(() => computeStats(quakes, days), [quakes, days]);
+  const volcanoes = useMemo(() => volcanoData ?? [], [volcanoData]);
+  const vStats = useMemo(() => computeVolcanoStats(volcanoes), [volcanoes]);
 
   return (
     <main className="min-h-dvh w-full bg-ink-950 text-white">
@@ -215,6 +244,43 @@ export default function StatsPage() {
           </div>
         )}
 
+        {volcanoes.length > 0 ? (
+          <div className="mt-8 flex flex-col gap-5">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#ff8a3d]">
+              Volcanoes
+            </h2>
+            <section className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+              <Headline
+                icon={<Flame className="h-4 w-4" />}
+                label="Holocene volcanoes"
+                value={vStats.total.toLocaleString()}
+                accent="amber"
+              />
+              <Headline
+                icon={<Mountain className="h-4 w-4" />}
+                label="Highest"
+                value={
+                  vStats.highest ? `${vStats.highest.elevation_m.toLocaleString()} m` : "—"
+                }
+                sub={vStats.highest?.name}
+              />
+              <Headline
+                icon={<Layers className="h-4 w-4" />}
+                label="Types"
+                value={vStats.types.length.toLocaleString()}
+              />
+            </section>
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+              <Panel title="By type">
+                <TopRegions regions={vStats.types} />
+              </Panel>
+              <Panel title="Top countries">
+                <TopRegions regions={vStats.countries} />
+              </Panel>
+            </div>
+          </div>
+        ) : null}
+
         <footer className="mt-10 border-t border-white/10 pt-5 text-[11px] leading-relaxed text-white/40">
           Earthquake data from the free, public{" "}
           <a
@@ -225,7 +291,7 @@ export default function StatsPage() {
           >
             USGS Earthquake API
           </a>
-          . Updated live; no account required.
+          . Updated live; no account required. Volcano data: Smithsonian Global Volcanism Program.
         </footer>
       </div>
     </main>
