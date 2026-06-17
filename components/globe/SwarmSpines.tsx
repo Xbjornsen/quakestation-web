@@ -174,7 +174,13 @@ export function SwarmSpines({ swarms }: { swarms: Swarm[] }) {
   );
 
   const uniforms = useMemo(
-    () => ({ uTime: { value: 0 }, uPixelRatio: { value: Math.min(gl.getPixelRatio(), 2) } }),
+    () => ({
+      uTime: { value: 0 },
+      uPixelRatio: { value: Math.min(gl.getPixelRatio(), 2) },
+      // Tighter cap than loose markers: stacked tower events must not bloat
+      // into heavy overdraw at one screen location.
+      uMaxSizePx: { value: 120 },
+    }),
     [gl],
   );
 

@@ -17,7 +17,7 @@ import { rippleVertex, rippleFragment, rippleSizePx } from "./shaders/ripple";
 export function Markers({ quakes }: { quakes: Quake[] }) {
   const pointsRef = useRef<THREE.Points>(null);
   const matRef = useRef<THREE.ShaderMaterial>(null);
-  const setSelected = useGlobeStore((s) => s.setSelected);
+  const focusQuake = useGlobeStore((s) => s.focusQuake);
   const { gl } = useThree();
 
   const geometry = useMemo(() => {
@@ -61,6 +61,8 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
     () => ({
       uTime: { value: 0 },
       uPixelRatio: { value: Math.min(gl.getPixelRatio(), 2) },
+      // Loose markers get headroom so the largest quakes read clearly bigger.
+      uMaxSizePx: { value: 180 },
     }),
     [gl],
   );
@@ -69,7 +71,10 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
     e.stopPropagation();
     const i = e.index as number | undefined;
     if (i == null) return;
-    setSelected(quakes[i] ?? null);
+    const q = quakes[i];
+    // Same behaviour as pills / swarm towers: select the event and fly the
+    // camera to it.
+    if (q) focusQuake(q);
   };
 
   if (quakes.length === 0) return null;

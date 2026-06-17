@@ -18,6 +18,7 @@ export const rippleVertex = /* glsl */ `
   attribute float aMag;
   attribute float aPhase;
   uniform float uPixelRatio;
+  uniform float uMaxSizePx;
   varying vec3 vColor;
   varying float vMag;
   varying float vPhase;
@@ -36,7 +37,7 @@ export const rippleVertex = /* glsl */ `
 
     vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
     float size = aMaxRipplePx * uPixelRatio * (4.5 / -mvPos.z);
-    float clamped = clamp(size, 12.0, 120.0);
+    float clamped = clamp(size, 12.0, uMaxSizePx);
     vPointSizePx = clamped;
 
     float horizonMask = smoothstep(-0.02, 0.08, facing);
@@ -69,7 +70,8 @@ export const rippleFragment = /* glsl */ `
 
     float ringThickness = 2.2 / vPointSizePx;
     float ringStartR = dotRadiusNorm + 0.05;
-    float speed = 0.4;
+    // Slow, calm ripple — a full expansion takes ~5.5s.
+    float speed = 0.18;
 
     // Ring count scales with magnitude: M3 -> 1, M4 -> 2, ... M7+ -> 5.
     float nRings = clamp(floor(vMag) - 2.0, 1.0, 5.0);
@@ -81,8 +83,10 @@ export const rippleFragment = /* glsl */ `
       // (k * 0.2) keeps the concentric rings marching outward together.
       float t = fract(uTime * speed + vPhase + float(k) * 0.2);
       float r = mix(ringStartR, 0.96, t);
-      float fade = pow(1.0 - t, 1.3);
-      ringAlpha += ring(d, r, ringThickness) * fade * 0.85;
+      // Smooth bell envelope (0 at birth, peak mid-flight, 0 at the edge) so
+      // rings ease in and out instead of strobing into existence bright.
+      float fade = sin(t * 3.14159265);
+      ringAlpha += ring(d, r, ringThickness) * fade * 0.7;
     }
 
     float dotA = epicentre * 0.95;
@@ -97,7 +101,8 @@ export const rippleFragment = /* glsl */ `
 `;
 
 export function rippleSizePx(mag: number): number {
-  // Steeper than before so the magnitude difference is unmistakable:
-  // M3 ~14px, M5 ~36px, M6 ~57px, M7 ~92px.
-  return Math.max(14, Math.pow(1.6, mag - 3) * 14);
+  // Linear in magnitude so a ripple's radius reads directly as the quake's
+  // size. Base px at the default dolly (before the distance scale + per-layer
+  // clamp in the vertex shader): M2.5 ~9, M4 ~22, M6 ~40, M8 ~58.
+  return Math.max(10, (mag - 1.5) * 9);
 }
