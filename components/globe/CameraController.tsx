@@ -7,12 +7,23 @@ import * as THREE from "three";
 import { useGlobeStore } from "@/store/globeStore";
 import { latLonToVec3 } from "@/lib/geo";
 
-// Smooth fly-to that *rotates* the camera around the origin instead of
-// translating it through space. We capture the orbital distance at the
-// moment the fly starts, then each frame slerp the camera's unit
-// direction toward the target's unit direction and rescale to that
-// fixed distance. The user keeps whatever zoom they had before clicking
-// the pill — no surprise dolly-in.
+// Fixed wall-clock duration of a fly-to (seconds).
+const FLY_DURATION = 0.9;
+
+// Spherical-lerp between two unit direction vectors.
+function slerpDir(a: THREE.Vector3, b: THREE.Vector3, t: number, out: THREE.Vector3): THREE.Vector3 {
+  const dot = THREE.MathUtils.clamp(a.dot(b), -1, 1);
+  if (dot > 0.9999) return out.copy(b); // already aligned
+  const theta = Math.acos(dot) * t;
+  // Component of b orthogonal to a, normalised.
+  out.copy(b).addScaledVector(a, -dot).normalize();
+  return out.multiplyScalar(Math.sin(theta)).addScaledVector(a, Math.cos(theta));
+}
+
+// Smooth fly-to that *rotates* the camera around the origin (keeping the
+// user's current zoom). The flight is driven by a progress counter so it
+// always finishes after FLY_DURATION and hands control back to OrbitControls —
+// no asymptotic loop that could fight the user's drag.
 export function CameraController() {
   const controlsRef = useRef<any>(null);
   const flyToTarget = useGlobeStore((s) => s.flyToTarget);
@@ -20,38 +31,43 @@ export function CameraController() {
   const autoRotate = useGlobeStore((s) => s.autoRotate);
   const { camera } = useThree();
 
-  const flightRef = useRef<{ dist: number; target: THREE.Vector3 } | null>(null);
+  const flightRef = useRef<{
+    start: THREE.Vector3;
+    target: THREE.Vector3;
+    dist: number;
+    p: number;
+  } | null>(null);
 
-  // Capture the orbital distance once at the start of each fly, and
-  // pre-compute the target direction as a unit vector.
   useEffect(() => {
     if (flyToTarget) {
       flightRef.current = {
+        start: camera.position.clone().normalize(),
+        target: latLonToVec3(flyToTarget.lat, flyToTarget.lon, 1).normalize(),
         dist: camera.position.length(),
-        target: latLonToVec3(flyToTarget.lat, flyToTarget.lon, 1),
+        p: 0,
       };
     } else {
       flightRef.current = null;
     }
   }, [flyToTarget, camera]);
 
+  const dirRef = useRef(new THREE.Vector3());
+
   useFrame((_, dt) => {
-    const flight = flightRef.current;
-    if (!flight) return;
+    const f = flightRef.current;
+    if (!f) return;
 
-    const currentDir = camera.position.clone().normalize();
-    const k = Math.min(1, dt * 3.2);
+    f.p = Math.min(1, f.p + dt / FLY_DURATION);
+    // easeInOutQuad
+    const e = f.p < 0.5 ? 2 * f.p * f.p : 1 - Math.pow(-2 * f.p + 2, 2) / 2;
 
-    // Direction-only lerp: normalise after the linear step so the
-    // intermediate vectors stay on the unit sphere.
-    const nextDir = currentDir.lerp(flight.target, k).normalize();
-    camera.position.copy(nextDir).multiplyScalar(flight.dist);
+    const dir = slerpDir(f.start, f.target, e, dirRef.current);
+    camera.position.copy(dir).multiplyScalar(f.dist);
     camera.lookAt(0, 0, 0);
     controlsRef.current?.update();
 
-    const angle = currentDir.angleTo(flight.target);
-    if (angle < 0.002) {
-      camera.position.copy(flight.target).multiplyScalar(flight.dist);
+    if (f.p >= 1) {
+      camera.position.copy(f.target).multiplyScalar(f.dist);
       camera.lookAt(0, 0, 0);
       controlsRef.current?.update();
       clearFlyTo();
