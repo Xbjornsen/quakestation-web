@@ -89,11 +89,6 @@ export function SettingsDrawer() {
             checked={s.showVolcanoes}
             onChange={() => s.toggle("showVolcanoes")}
           />
-          <Toggle
-            label="Seismic heatmap"
-            checked={s.showHeatmap}
-            onChange={() => s.toggle("showHeatmap")}
-          />
         </Section>
 
         <Section title="Globe">

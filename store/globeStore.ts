@@ -21,7 +21,6 @@ interface GlobeState {
   days: number;
   showPlates: boolean;
   showVolcanoes: boolean;
-  showHeatmap: boolean;
   autoRotate: boolean;
   colorMode: MarkerColorMode;
   settingsOpen: boolean;
@@ -34,7 +33,7 @@ interface GlobeState {
   setSwarmCount: (n: number) => void;
   setMinMagnitude: (m: number) => void;
   setDays: (d: number) => void;
-  toggle: (key: "showPlates" | "showVolcanoes" | "showHeatmap" | "autoRotate") => void;
+  toggle: (key: "showPlates" | "showVolcanoes" | "autoRotate") => void;
   setColorMode: (m: MarkerColorMode) => void;
   setSettingsOpen: (b: boolean) => void;
   flyTo: (lat: number, lon: number) => void;
@@ -55,7 +54,6 @@ export const useGlobeStore = create<GlobeState>((set) => ({
   days: 1,
   showPlates: false,
   showVolcanoes: false,
-  showHeatmap: false,
   autoRotate: false,
   colorMode: "magnitude",
   settingsOpen: false,
