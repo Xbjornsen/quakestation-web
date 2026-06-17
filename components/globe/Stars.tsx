@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 export function Stars({ count = 5000, radius = 80 }: { count?: number; radius?: number }) {
+  const ref = useRef<THREE.Points>(null);
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry();
     const positions = new Float32Array(count * 3);
@@ -39,5 +41,16 @@ export function Stars({ count = 5000, radius = 80 }: { count?: number; radius?: 
     });
   }, []);
 
-  return <points geometry={geometry} material={material} />;
+  // Turn the starfield with the camera's azimuth so it stays put in the
+  // view instead of sweeping past during horizontal orbit (notably
+  // auto-rotate, which is purely azimuthal). This exactly cancels the
+  // azimuthal motion; elevation changes still parallax slightly, which
+  // only happens on manual drag.
+  useFrame(({ camera }) => {
+    if (ref.current) {
+      ref.current.rotation.y = Math.atan2(camera.position.x, camera.position.z);
+    }
+  });
+
+  return <points ref={ref} geometry={geometry} material={material} />;
 }
