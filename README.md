@@ -2,7 +2,7 @@
 
 Web companion to the [QuakeStation Android app](https://github.com/Xbjornsen/QuakeStation).
 Live global earthquake tracker on a cinematic Three.js globe, with deep-linkable events,
-volcano/peak overlays, swarm detection and time-lapse replay.
+volcano overlays, swarm detection and time-lapse replay.
 
 > Domain: [quakestation.com](https://quakestation.com)
 

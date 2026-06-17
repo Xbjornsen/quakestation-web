@@ -89,7 +89,6 @@ export function SettingsDrawer() {
             checked={s.showVolcanoes}
             onChange={() => s.toggle("showVolcanoes")}
           />
-          <Toggle label="Major peaks" checked={s.showPeaks} onChange={() => s.toggle("showPeaks")} />
           <Toggle
             label="Seismic heatmap"
             checked={s.showHeatmap}
@@ -104,6 +103,19 @@ export function SettingsDrawer() {
             onChange={() => s.toggle("autoRotate")}
           />
         </Section>
+
+        <div className="mt-2 border-t border-white/10 pt-4 text-[11px] leading-relaxed text-white/40">
+          Earthquake data from the free, public{" "}
+          <a
+            href="https://earthquake.usgs.gov/fdsnws/event/1/"
+            target="_blank"
+            rel="noreferrer"
+            className="text-white/60 underline decoration-white/20 underline-offset-2 transition-colors hover:text-accent-cyan"
+          >
+            USGS Earthquake API
+          </a>
+          . Updated live; no account required.
+        </div>
       </div>
     </div>
     </>

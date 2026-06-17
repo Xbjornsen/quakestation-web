@@ -10,7 +10,6 @@ import { Markers } from "./Markers";
 import { SwarmSpines } from "./SwarmSpines";
 import { Plates } from "./Plates";
 import { Volcanoes } from "./Volcanoes";
-import { Peaks } from "./Peaks";
 import { FocusPulse } from "./FocusPulse";
 import { CameraController } from "./CameraController";
 import { useMemo } from "react";
@@ -35,7 +34,6 @@ export default function GlobeScene() {
   const setSwarmCount = useGlobeStore((s) => s.setSwarmCount);
   const showPlates = useGlobeStore((s) => s.showPlates);
   const showVolcanoes = useGlobeStore((s) => s.showVolcanoes);
-  const showPeaks = useGlobeStore((s) => s.showPeaks);
 
   useEffect(() => {
     if (data?.quakes) setQuakes(data.quakes);
@@ -68,7 +66,6 @@ export default function GlobeScene() {
       <Atmosphere />
       {showPlates && <Plates />}
       {showVolcanoes && <Volcanoes />}
-      {showPeaks && <Peaks />}
       <Markers quakes={loose} />
       <SwarmSpines swarms={swarms} />
       <FocusPulse />

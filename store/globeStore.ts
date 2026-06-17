@@ -11,7 +11,7 @@ interface GlobeState {
   quakes: Quake[];
   selected: Quake | null;
   selectedSwarm: Swarm | null;
-  // A selected volcano/peak overlay feature. Mutually exclusive with
+  // A selected volcano overlay feature. Mutually exclusive with
   // `selected` / `selectedSwarm` — selecting one clears the others.
   selectedFeature: SelectedFeature | null;
   // When a quake is opened by drilling into a swarm's event list, we
@@ -21,7 +21,6 @@ interface GlobeState {
   days: number;
   showPlates: boolean;
   showVolcanoes: boolean;
-  showPeaks: boolean;
   showHeatmap: boolean;
   autoRotate: boolean;
   colorMode: MarkerColorMode;
@@ -35,7 +34,7 @@ interface GlobeState {
   setSwarmCount: (n: number) => void;
   setMinMagnitude: (m: number) => void;
   setDays: (d: number) => void;
-  toggle: (key: "showPlates" | "showVolcanoes" | "showPeaks" | "showHeatmap" | "autoRotate") => void;
+  toggle: (key: "showPlates" | "showVolcanoes" | "showHeatmap" | "autoRotate") => void;
   setColorMode: (m: MarkerColorMode) => void;
   setSettingsOpen: (b: boolean) => void;
   flyTo: (lat: number, lon: number) => void;
@@ -56,7 +55,6 @@ export const useGlobeStore = create<GlobeState>((set) => ({
   days: 1,
   showPlates: false,
   showVolcanoes: false,
-  showPeaks: false,
   showHeatmap: false,
   autoRotate: false,
   colorMode: "magnitude",
@@ -93,8 +91,8 @@ export const useGlobeStore = create<GlobeState>((set) => ({
       selectedFeature: null,
       flyToTarget: { lat: s.centroidLat, lon: s.centroidLon },
     }),
-  // Clicking a volcano cone or peak marker: show its detail card, clear
-  // any quake/swarm selection, and fly to it.
+  // Clicking a volcano cone: show its detail card, clear any quake/swarm
+  // selection, and fly to it.
   focusFeature: (f) =>
     set({
       selectedFeature: f,

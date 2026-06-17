@@ -10,7 +10,6 @@ import {
   ArrowDownWideNarrow,
   Clock,
   ChevronLeft,
-  Mountain,
   Flame,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -42,23 +41,18 @@ export function DetailPanel() {
 
 function FeatureDetail({ feature }: { feature: SelectedFeature }) {
   const clear = useGlobeStore((s) => s.setSelectedFeature);
-  const isVolcano = feature.kind === "volcano";
-  const accent = isVolcano ? "text-accent-amber/80" : "text-accent-cyan";
+  const volcano = feature.data;
 
   return (
     <div className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div
-            className={`inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.25em] ${accent}`}
-          >
-            {isVolcano ? <Flame className="h-3 w-3" /> : <Mountain className="h-3 w-3" />}
-            {isVolcano ? "Volcano" : "Mountain Peak"}
+          <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.25em] text-accent-amber/80">
+            <Flame className="h-3 w-3" />
+            Volcano
           </div>
-          <h2 className="mt-1 truncate text-lg font-semibold">{feature.data.name}</h2>
-          <div className="mt-0.5 truncate text-sm text-white/70">
-            {isVolcano ? feature.data.country : feature.data.range}
-          </div>
+          <h2 className="mt-1 truncate text-lg font-semibold">{volcano.name}</h2>
+          <div className="mt-0.5 truncate text-sm text-white/70">{volcano.country}</div>
         </div>
         <button
           onClick={() => clear(null)}
@@ -70,20 +64,11 @@ function FeatureDetail({ feature }: { feature: SelectedFeature }) {
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
-        <Stat label="Elevation" value={`${feature.data.elevation_m.toLocaleString()} m`} />
-        {feature.kind === "volcano" ? (
-          <>
-            <Stat label="Type" value={feature.data.type} />
-            <Stat label="Last erupt." value={feature.data.last_eruption} />
-          </>
-        ) : (
-          <>
-            <Stat label="Prominence" value={`${feature.data.prominence_m.toLocaleString()} m`} />
-            <Stat label="Range" value={feature.data.range} />
-          </>
-        )}
-        <Stat label="Lat" value={feature.data.lat.toFixed(2)} />
-        <Stat label="Lon" value={feature.data.lon.toFixed(2)} />
+        <Stat label="Elevation" value={`${volcano.elevation_m.toLocaleString()} m`} />
+        <Stat label="Type" value={volcano.type} />
+        <Stat label="Last erupt." value={volcano.last_eruption} />
+        <Stat label="Lat" value={volcano.lat.toFixed(2)} />
+        <Stat label="Lon" value={volcano.lon.toFixed(2)} />
       </div>
     </div>
   );

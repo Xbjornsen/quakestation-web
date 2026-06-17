@@ -192,6 +192,19 @@ export default function StatsPage() {
             </div>
           </div>
         )}
+
+        <footer className="mt-10 border-t border-white/10 pt-5 text-[11px] leading-relaxed text-white/40">
+          Earthquake data from the free, public{" "}
+          <a
+            href="https://earthquake.usgs.gov/fdsnws/event/1/"
+            target="_blank"
+            rel="noreferrer"
+            className="text-white/60 underline decoration-white/20 underline-offset-2 transition-colors hover:text-accent-cyan"
+          >
+            USGS Earthquake API
+          </a>
+          . Updated live; no account required.
+        </footer>
       </div>
     </main>
   );
