@@ -1,6 +1,7 @@
 "use client";
 
 import { useGlobeStore } from "@/store/globeStore";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 const MAG_STOPS: Array<{ label: string; color: string }> = [
   { label: "M2", color: "rgb(92,236,255)" },
@@ -13,6 +14,14 @@ const MAG_STOPS: Array<{ label: string; color: string }> = [
 
 export function Legend() {
   const count = useGlobeStore((s) => s.quakes.length);
+  const isMobile = useIsMobile();
+  const panelOpen = useGlobeStore(
+    (s) => !!(s.selected || s.selectedSwarm || s.selectedFeature),
+  );
+
+  // On phones the detail panel fills the bottom — don't stack the legend under it.
+  if (isMobile && panelOpen) return null;
+
   return (
     <div className="pointer-events-auto m-4 self-end rounded-xl border border-white/10 bg-ink-900/80 px-3 py-2 text-xs backdrop-blur-md sm:m-6">
       <div className="mb-1.5 text-[10px] uppercase tracking-[0.25em] text-white/50">

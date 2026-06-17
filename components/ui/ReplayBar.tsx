@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { Play, Pause, History, X } from "lucide-react";
 import { useGlobeStore } from "@/store/globeStore";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { REPLAY_MIN_MAG, type Quake } from "@/lib/usgs";
 
 // Wall-clock seconds to play the whole window end to end.
@@ -28,6 +29,10 @@ export function ReplayBar() {
   const setReplayTime = useGlobeStore((s) => s.setReplayTime);
   const setReplayPlaying = useGlobeStore((s) => s.setReplayPlaying);
   const flyTo = useGlobeStore((s) => s.flyTo);
+  const isMobile = useIsMobile();
+  const panelOpen = useGlobeStore(
+    (s) => !!(s.selected || s.selectedSwarm || s.selectedFeature),
+  );
 
   // Quakes in chronological order, for picking what just happened as the
   // playhead sweeps forward.
@@ -119,6 +124,9 @@ export function ReplayBar() {
   };
 
   const disabled = quakes.length === 0;
+
+  // On phones the detail panel owns the bottom of the screen; don't overlap it.
+  if (isMobile && panelOpen) return null;
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-4 sm:p-6">

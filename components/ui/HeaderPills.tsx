@@ -92,7 +92,7 @@ function Pill({
 function PillTooltip({ quake }: { quake: Quake }) {
   return (
     <div
-      className="pointer-events-none absolute left-0 top-full z-30 mt-2 w-72 origin-top-left scale-95 rounded-xl border border-white/10 bg-ink-900/95 p-3.5 opacity-0 shadow-2xl backdrop-blur-xl transition-all duration-150 group-hover:pointer-events-auto group-hover:scale-100 group-hover:opacity-100"
+      className="pointer-events-none absolute left-0 top-full z-30 mt-2 hidden w-72 origin-top-left scale-95 rounded-xl border border-white/10 bg-ink-900/95 p-3.5 opacity-0 shadow-2xl backdrop-blur-xl transition-all duration-150 group-hover:pointer-events-auto group-hover:scale-100 group-hover:opacity-100 sm:block"
       role="tooltip"
     >
       <div className="flex items-baseline justify-between gap-2">

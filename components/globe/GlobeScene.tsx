@@ -15,6 +15,7 @@ import { CameraController } from "./CameraController";
 import { useMemo } from "react";
 import { detectSwarms, type Swarm } from "@/lib/swarm";
 import { useQuakes } from "@/hooks/useQuakes";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { REPLAY_MIN_MAG } from "@/lib/usgs";
 import { useGlobeStore } from "@/store/globeStore";
 
@@ -32,6 +33,7 @@ function FallbackEarth() {
 }
 
 export default function GlobeScene() {
+  const isMobile = useIsMobile();
   const minMag = useGlobeStore((s) => s.minMagnitude);
   const days = useGlobeStore((s) => s.days);
   const { data } = useQuakes({ minMagnitude: minMag, days });
@@ -79,9 +81,10 @@ export default function GlobeScene() {
     <Canvas
       className="absolute inset-0"
       camera={{ position: [0, 0, 3.2], fov: 45, near: 0.01, far: 200 }}
-      dpr={[1, 2]}
+      // Lighter render budget on phones: cap the pixel ratio and drop MSAA.
+      dpr={isMobile ? [1, 1.5] : [1, 2]}
       raycaster={{ params: { Points: { threshold: 0.02 } } as any }}
-      gl={{ antialias: true, powerPreference: "high-performance" }}
+      gl={{ antialias: !isMobile, powerPreference: "high-performance" }}
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;
         gl.toneMappingExposure = 1.35;
@@ -91,7 +94,7 @@ export default function GlobeScene() {
       <ambientLight intensity={0.05} />
       <Stars />
       <Suspense fallback={<FallbackEarth />}>
-        <Earth />
+        <Earth segments={isMobile ? 192 : 512} />
       </Suspense>
       <Atmosphere />
       {showPlates && <Plates />}

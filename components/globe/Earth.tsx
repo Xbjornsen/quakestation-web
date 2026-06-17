@@ -10,7 +10,7 @@ const DAY = "/textures/earth_day.jpg";
 const NIGHT = "/textures/earth_night.jpg";
 const SPEC = "/textures/earth_spec.jpg";
 
-export function Earth() {
+export function Earth({ segments = 512 }: { segments?: number }) {
   const matRef = useRef<THREE.ShaderMaterial>(null);
   const { gl } = useThree();
   const maxAniso = gl.capabilities.getMaxAnisotropy();
@@ -49,7 +49,7 @@ export function Earth() {
 
   return (
     <mesh>
-      <sphereGeometry args={[1, 512, 512]} />
+      <sphereGeometry args={[1, segments, segments]} />
       <shaderMaterial
         ref={matRef}
         vertexShader={earthVertex}
