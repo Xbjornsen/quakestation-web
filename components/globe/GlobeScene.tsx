@@ -10,7 +10,7 @@ import { Markers } from "./Markers";
 import { SwarmSpines } from "./SwarmSpines";
 import { Plates } from "./Plates";
 import { Volcanoes } from "./Volcanoes";
-import { FocusPulse } from "./FocusPulse";
+import { PoleMarkers } from "./PoleMarkers";
 import { CameraController } from "./CameraController";
 import { useMemo } from "react";
 import { detectSwarms } from "@/lib/swarm";
@@ -68,7 +68,7 @@ export default function GlobeScene() {
       {showVolcanoes && <Volcanoes />}
       <Markers quakes={loose} />
       <SwarmSpines swarms={swarms} />
-      <FocusPulse />
+      <PoleMarkers />
       <CameraController />
     </Canvas>
   );
