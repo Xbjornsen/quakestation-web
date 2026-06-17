@@ -69,7 +69,11 @@ export const useGlobeStore = create<GlobeState>((set) => ({
   replayTime: null,
   replayPlaying: false,
   setQuakes: (quakes) => set({ quakes }),
-  setSelected: (selected) => set({ selected }),
+  // Selecting a single quake is exclusive: clear any swarm/feature panel so
+  // the detail surface always shows exactly one thing (clicking a loose
+  // marker while a swarm is open replaces it rather than hiding behind it).
+  setSelected: (selected) =>
+    set({ selected, selectedSwarm: null, selectedFeature: null, swarmReturn: null }),
   setSelectedSwarm: (selectedSwarm) => set({ selectedSwarm }),
   setSelectedFeature: (selectedFeature) => set({ selectedFeature }),
   setSwarmCount: (swarmCount) => set({ swarmCount }),
