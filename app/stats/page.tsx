@@ -6,7 +6,7 @@ import { ArrowLeft, Activity, Layers, Flame, Gauge, Mountain } from "lucide-reac
 import { useGlobeStore } from "@/store/globeStore";
 import { useQuakes } from "@/hooks/useQuakes";
 import { useVolcanoes } from "@/hooks/useVolcanoes";
-import { detectSwarms } from "@/lib/swarm";
+import { detectSwarms, type Swarm } from "@/lib/swarm";
 import { magnitudeColor } from "@/lib/utils";
 import type { Quake } from "@/lib/usgs";
 import type { Volcano } from "@/lib/features";
@@ -98,6 +98,35 @@ function computeStats(quakes: Quake[], days: number): Stats {
   };
 }
 
+interface SwarmStats {
+  total: number;
+  totalEvents: number;
+  largest: Swarm | null; // most events
+  strongest: Swarm | null; // highest peak magnitude
+  top: Array<{ name: string; count: number }>;
+}
+
+function swarmPlace(s: Swarm): string {
+  const biggest = s.events.reduce((m, q) => (q.mag > m.mag ? q : m), s.events[0]);
+  return regionOf(biggest.place);
+}
+
+function computeSwarmStats(swarms: Swarm[]): SwarmStats {
+  let largest: Swarm | null = null;
+  let strongest: Swarm | null = null;
+  let totalEvents = 0;
+  for (const s of swarms) {
+    totalEvents += s.events.length;
+    if (!largest || s.events.length > largest.events.length) largest = s;
+    if (!strongest || s.maxMag > strongest.maxMag) strongest = s;
+  }
+  const top = [...swarms]
+    .sort((a, b) => b.events.length - a.events.length)
+    .slice(0, 6)
+    .map((s) => ({ name: swarmPlace(s), count: s.events.length }));
+  return { total: swarms.length, totalEvents, largest, strongest, top };
+}
+
 interface VolcanoStats {
   total: number;
   highest: Volcano | null;
@@ -131,6 +160,8 @@ export default function StatsPage() {
 
   const quakes = useMemo(() => data?.quakes ?? [], [data]);
   const stats = useMemo(() => computeStats(quakes, days), [quakes, days]);
+  const swarms = useMemo(() => detectSwarms(quakes).swarms, [quakes]);
+  const swarmStats = useMemo(() => computeSwarmStats(swarms), [swarms]);
   const volcanoes = useMemo(() => volcanoData ?? [], [volcanoData]);
   const vStats = useMemo(() => computeVolcanoStats(volcanoes), [volcanoes]);
 
@@ -243,6 +274,43 @@ export default function StatsPage() {
             </div>
           </div>
         )}
+
+        {swarmStats.total > 0 ? (
+          <div className="mt-8 flex flex-col gap-5">
+            <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-accent-amber/70">
+              Swarms
+            </h2>
+            <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <Headline
+                icon={<Layers className="h-4 w-4" />}
+                label="Swarms"
+                value={swarmStats.total.toLocaleString()}
+                accent="amber"
+              />
+              <Headline
+                icon={<Activity className="h-4 w-4" />}
+                label="Events in swarms"
+                value={swarmStats.totalEvents.toLocaleString()}
+              />
+              <Headline
+                icon={<Gauge className="h-4 w-4" />}
+                label="Most active"
+                value={swarmStats.largest ? `${swarmStats.largest.events.length}` : "—"}
+                sub={swarmStats.largest ? swarmPlace(swarmStats.largest) : undefined}
+              />
+              <Headline
+                icon={<Flame className="h-4 w-4" />}
+                label="Strongest"
+                value={swarmStats.strongest ? `M${swarmStats.strongest.maxMag.toFixed(1)}` : "—"}
+                sub={swarmStats.strongest ? swarmPlace(swarmStats.strongest) : undefined}
+                accent="rose"
+              />
+            </section>
+            <Panel title="Most active swarms">
+              <TopRegions regions={swarmStats.top} />
+            </Panel>
+          </div>
+        ) : null}
 
         {volcanoes.length > 0 ? (
           <div className="mt-8 flex flex-col gap-5">

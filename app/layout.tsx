@@ -5,8 +5,20 @@ import { Providers } from "./providers";
 export const metadata: Metadata = {
   title: "QuakeStation — Live earthquake & volcano tracker",
   description:
-    "Real-time global earthquake, volcano and tectonic tracker on a cinematic 3D globe. Powered by USGS, EMSC and NOAA.",
+    "Real-time global earthquake, volcano and tectonic-plate tracker on a cinematic 3D globe. Powered by the free USGS earthquake feed.",
   metadataBase: new URL("https://quakestation.com"),
+  applicationName: "QuakeStation",
+  keywords: [
+    "earthquake tracker",
+    "live earthquakes",
+    "seismic activity",
+    "USGS",
+    "volcanoes",
+    "tectonic plates",
+    "3D globe",
+    "earthquake map",
+  ],
+  alternates: { canonical: "/" },
   openGraph: {
     title: "QuakeStation",
     description: "Live global seismic activity on a cinematic 3D globe.",
