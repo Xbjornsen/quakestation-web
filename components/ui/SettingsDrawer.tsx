@@ -1,6 +1,6 @@
 "use client";
 
-import { useGlobeStore } from "@/store/globeStore";
+import { useGlobeStore, DEPTH_MIN, DEPTH_MAX } from "@/store/globeStore";
 import { X } from "lucide-react";
 
 export function SettingsDrawer() {
@@ -39,6 +39,37 @@ export function SettingsDrawer() {
           />
           <div className="mt-1 font-mono text-xs text-white/70">
             M ≥ {s.minMagnitude.toFixed(1)}
+          </div>
+        </Section>
+
+        <Section title="Depth band">
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <input
+                type="range"
+                min={DEPTH_MIN}
+                max={DEPTH_MAX}
+                step={10}
+                value={s.depthMin}
+                onChange={(e) => s.setDepthRange(Number(e.target.value), s.depthMax)}
+                className="w-full accent-accent-cyan"
+                aria-label="Minimum depth"
+              />
+              <input
+                type="range"
+                min={DEPTH_MIN}
+                max={DEPTH_MAX}
+                step={10}
+                value={s.depthMax}
+                onChange={(e) => s.setDepthRange(s.depthMin, Number(e.target.value))}
+                className="mt-2 w-full accent-accent-cyan"
+                aria-label="Maximum depth"
+              />
+            </div>
+          </div>
+          <div className="mt-1 flex items-center justify-between font-mono text-xs text-white/70">
+            <span>{s.depthMin} km</span>
+            <span>{s.depthMax} km</span>
           </div>
         </Section>
 
@@ -89,6 +120,11 @@ export function SettingsDrawer() {
             checked={s.showVolcanoes}
             onChange={() => s.toggle("showVolcanoes")}
           />
+          <Toggle
+            label="Swarm towers"
+            checked={s.showSwarms}
+            onChange={() => s.toggle("showSwarms")}
+          />
         </Section>
 
         <Section title="Globe">
@@ -97,6 +133,23 @@ export function SettingsDrawer() {
             checked={s.autoRotate}
             onChange={() => s.toggle("autoRotate")}
           />
+          {s.autoRotate && (
+            <div className="mt-2">
+              <input
+                type="range"
+                min={0.1}
+                max={2}
+                step={0.05}
+                value={s.autoRotateSpeed}
+                onChange={(e) => s.setAutoRotateSpeed(Number(e.target.value))}
+                className="w-full accent-accent-cyan"
+                aria-label="Auto-rotate speed"
+              />
+              <div className="mt-1 font-mono text-xs text-white/70">
+                Speed {s.autoRotateSpeed.toFixed(2)}×
+              </div>
+            </div>
+          )}
         </Section>
 
         <div className="mt-2 border-t border-white/10 pt-4 text-[11px] leading-relaxed text-white/40">

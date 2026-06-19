@@ -41,13 +41,23 @@ export default function GlobeScene() {
   const setSwarmCount = useGlobeStore((s) => s.setSwarmCount);
   const showPlates = useGlobeStore((s) => s.showPlates);
   const showVolcanoes = useGlobeStore((s) => s.showVolcanoes);
+  const showSwarms = useGlobeStore((s) => s.showSwarms);
+  const depthMin = useGlobeStore((s) => s.depthMin);
+  const depthMax = useGlobeStore((s) => s.depthMax);
   const replayTime = useGlobeStore((s) => s.replayTime);
 
   useEffect(() => {
     if (data?.quakes) setQuakes(data.quakes);
   }, [data, setQuakes]);
 
-  const { swarms, loose } = useMemo(() => detectSwarms(data?.quakes ?? []), [data?.quakes]);
+  // Apply the depth band before swarm detection so both loose markers and
+  // swarm towers honour it consistently.
+  const depthFiltered = useMemo(
+    () => (data?.quakes ?? []).filter((q) => q.depth >= depthMin && q.depth <= depthMax),
+    [data?.quakes, depthMin, depthMax],
+  );
+
+  const { swarms, loose } = useMemo(() => detectSwarms(depthFiltered), [depthFiltered]);
 
   useEffect(() => {
     setSwarmCount(swarms.length);
@@ -60,7 +70,7 @@ export default function GlobeScene() {
   const replaying = replayTime != null;
   const markerQuakes = useMemo(() => {
     if (!replaying || replayTime == null) return loose;
-    const all = data?.quakes ?? [];
+    const all = depthFiltered;
     if (all.length === 0) return all;
     let lo = Infinity;
     let hi = -Infinity;
@@ -74,8 +84,9 @@ export default function GlobeScene() {
     return all.filter(
       (q) => q.mag >= REPLAY_MIN_MAG && q.time <= replayTime && q.time > replayTime - windowMs,
     );
-  }, [replaying, replayTime, data, loose]);
-  const spineSwarms = replaying ? NO_SWARMS : swarms;
+  }, [replaying, replayTime, depthFiltered, loose]);
+  // Suppress towers during replay (sequence view) or when the user hides them.
+  const spineSwarms = replaying || !showSwarms ? NO_SWARMS : swarms;
 
   return (
     <Canvas
