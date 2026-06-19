@@ -36,7 +36,7 @@ export function PoleMarkers() {
 
   return (
     <>
-      <Html position={[0, R, 0]} center distanceFactor={7} zIndexRange={[5, 0]}>
+      <Html position={[0, R, 0]} center zIndexRange={[5, 0]}>
         <div
           ref={nRef}
           className="pointer-events-none grid h-6 w-6 select-none place-items-center rounded-full border border-accent-cyan/50 bg-ink-900/70 font-mono text-xs font-semibold text-accent-cyan backdrop-blur-sm"
@@ -44,7 +44,7 @@ export function PoleMarkers() {
           N
         </div>
       </Html>
-      <Html position={[0, -R, 0]} center distanceFactor={7} zIndexRange={[5, 0]}>
+      <Html position={[0, -R, 0]} center zIndexRange={[5, 0]}>
         <div
           ref={sRef}
           className="pointer-events-none grid h-6 w-6 select-none place-items-center rounded-full border border-white/30 bg-ink-900/70 font-mono text-xs font-semibold text-white/70 backdrop-blur-sm"

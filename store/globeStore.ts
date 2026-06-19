@@ -1,11 +1,14 @@
 "use client";
 
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type { Quake } from "@/lib/usgs";
 import type { Swarm } from "@/lib/swarm";
 import type { SelectedFeature } from "@/lib/features";
 
 export type MarkerColorMode = "magnitude" | "depth";
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 
 interface GlobeState {
   quakes: Quake[];
@@ -19,9 +22,17 @@ interface GlobeState {
   swarmReturn: Swarm | null;
   minMagnitude: number;
   days: number;
+  // Depth band (km below sea level) that quakes must fall within to render.
+  // Defaults to the full USGS range so nothing is hidden until narrowed.
+  depthMin: number;
+  depthMax: number;
   showPlates: boolean;
   showVolcanoes: boolean;
+  // Swarm towers (the radial event stacks). Independent of loose markers.
+  showSwarms: boolean;
   autoRotate: boolean;
+  // Orbit auto-rotation speed (OrbitControls units).
+  autoRotateSpeed: number;
   colorMode: MarkerColorMode;
   settingsOpen: boolean;
   swarmCount: number;
@@ -38,7 +49,9 @@ interface GlobeState {
   setSwarmCount: (n: number) => void;
   setMinMagnitude: (m: number) => void;
   setDays: (d: number) => void;
-  toggle: (key: "showPlates" | "showVolcanoes" | "autoRotate") => void;
+  setDepthRange: (min: number, max: number) => void;
+  setAutoRotateSpeed: (n: number) => void;
+  toggle: (key: "showPlates" | "showVolcanoes" | "showSwarms" | "autoRotate") => void;
   setColorMode: (m: MarkerColorMode) => void;
   setSettingsOpen: (b: boolean) => void;
   setReplayTime: (t: number | null) => void;
@@ -51,7 +64,14 @@ interface GlobeState {
   drillIntoQuake: (q: Quake, swarm: Swarm) => void;
 }
 
-export const useGlobeStore = create<GlobeState>((set) => ({
+// Bounds for the depth-band slider (km). Most catalogued quakes sit between
+// the surface and ~700 km, so the band defaults to the whole range.
+export const DEPTH_MIN = 0;
+export const DEPTH_MAX = 700;
+
+export const useGlobeStore = create<GlobeState>()(
+  persist(
+    (set) => ({
   quakes: [],
   selected: null,
   selectedSwarm: null,
@@ -59,9 +79,13 @@ export const useGlobeStore = create<GlobeState>((set) => ({
   swarmReturn: null,
   minMagnitude: 2.5,
   days: 1,
+  depthMin: DEPTH_MIN,
+  depthMax: DEPTH_MAX,
   showPlates: false,
   showVolcanoes: false,
+  showSwarms: true,
   autoRotate: false,
+  autoRotateSpeed: 0.35,
   colorMode: "magnitude",
   settingsOpen: false,
   swarmCount: 0,
@@ -79,6 +103,13 @@ export const useGlobeStore = create<GlobeState>((set) => ({
   setSwarmCount: (swarmCount) => set({ swarmCount }),
   setMinMagnitude: (minMagnitude) => set({ minMagnitude }),
   setDays: (days) => set({ days }),
+  // Keep the band ordered and clamped so the two sliders can't cross.
+  setDepthRange: (min, max) =>
+    set({
+      depthMin: clamp(Math.min(min, max), DEPTH_MIN, DEPTH_MAX),
+      depthMax: clamp(Math.max(min, max), DEPTH_MIN, DEPTH_MAX),
+    }),
+  setAutoRotateSpeed: (autoRotateSpeed) => set({ autoRotateSpeed }),
   toggle: (key) => set((s) => ({ [key]: !s[key] }) as Partial<GlobeState>),
   setColorMode: (colorMode) => set({ colorMode }),
   setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
@@ -124,4 +155,23 @@ export const useGlobeStore = create<GlobeState>((set) => ({
       swarmReturn: swarm,
       flyToTarget: { lat: q.lat, lon: q.lon },
     }),
-}));
+    }),
+    {
+      name: "quakestation-settings",
+      // Persist only the user's view preferences — never transient session
+      // state (live quake data, current selection, replay playhead, etc.).
+      partialize: (s) => ({
+        minMagnitude: s.minMagnitude,
+        days: s.days,
+        depthMin: s.depthMin,
+        depthMax: s.depthMax,
+        showPlates: s.showPlates,
+        showVolcanoes: s.showVolcanoes,
+        showSwarms: s.showSwarms,
+        autoRotate: s.autoRotate,
+        autoRotateSpeed: s.autoRotateSpeed,
+        colorMode: s.colorMode,
+      }),
+    },
+  ),
+);

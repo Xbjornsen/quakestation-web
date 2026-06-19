@@ -39,10 +39,12 @@ export const earthFragment = /* glsl */ `
       dayColor = mix(ocean, land, band) * 1.3;
     }
 
-    // Brighter base — almost flat lit so the whole disc reads clearly,
+    // Lift the dark Blue Marble texture (gamma < 1 raises the shadowed
+    // oceans) then near-flat light it so the whole disc reads brightly,
     // with just a touch of camera-facing emphasis to keep it 3D.
+    vec3 lifted = pow(dayColor, vec3(0.82));
     float facing = max(dot(n, viewDir), 0.0);
-    vec3 color = dayColor * (1.05 + 0.12 * facing);
+    vec3 color = lifted * (1.55 + 0.12 * facing);
 
     // Subtle ocean specular toward the camera centre.
     if (uHasMaps > 0.5) {
