@@ -2,6 +2,10 @@
 // sequence rather than flooding the globe with M2.5 background noise.
 export const REPLAY_MIN_MAG = 4;
 
+// PAGER alert level USGS assigns to significant events (estimated impact),
+// not to be confused with magnitude. Most events have no alert at all.
+export type AlertLevel = "green" | "yellow" | "orange" | "red";
+
 export interface Quake {
   id: string;
   mag: number;
@@ -10,6 +14,7 @@ export interface Quake {
   updated: number;
   url: string;
   tsunami: 0 | 1;
+  alert: AlertLevel | null;
   felt: number | null;
   sig: number;
   depth: number;
@@ -26,6 +31,7 @@ interface UsgsFeature {
     updated: number;
     url: string;
     tsunami: number;
+    alert: string | null;
     felt: number | null;
     sig: number;
   };
@@ -73,6 +79,10 @@ export async function fetchQuakeById(
   return { mag: j.properties.mag, place: j.properties.place ?? "Unknown location" };
 }
 
+function isAlertLevel(v: string | null): v is AlertLevel {
+  return v === "green" || v === "yellow" || v === "orange" || v === "red";
+}
+
 export function parseUsgs(raw: UsgsResponse): Quake[] {
   return raw.features
     .filter((f) => f.properties.mag != null && f.geometry?.coordinates?.length === 3)
@@ -84,6 +94,7 @@ export function parseUsgs(raw: UsgsResponse): Quake[] {
       updated: f.properties.updated,
       url: f.properties.url,
       tsunami: (f.properties.tsunami ? 1 : 0) as 0 | 1,
+      alert: isAlertLevel(f.properties.alert) ? f.properties.alert : null,
       felt: f.properties.felt,
       sig: f.properties.sig,
       lon: f.geometry.coordinates[0],

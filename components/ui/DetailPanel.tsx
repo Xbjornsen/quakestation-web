@@ -1,7 +1,7 @@
 "use client";
 
 import { useGlobeStore } from "@/store/globeStore";
-import { formatRelative, magnitudeColor } from "@/lib/utils";
+import { formatRelative, magnitudeColor, alertColor, rgbCss } from "@/lib/utils";
 import type { Quake } from "@/lib/usgs";
 import type { SelectedFeature } from "@/lib/features";
 import {
@@ -119,7 +119,19 @@ function QuakeDetail({ quake }: { quake: Quake }) {
         <Stat label="Lon" value={quake.lon.toFixed(2)} />
         <Stat label="Felt" value={quake.felt != null ? String(quake.felt) : "—"} />
         <Stat label="Significance" value={String(quake.sig)} />
-        <Stat label="Tsunami" value={quake.tsunami ? "Yes" : "No"} />
+        <Stat
+          label="Tsunami"
+          value={quake.tsunami ? "Yes" : "No"}
+          color={quake.tsunami ? "rgb(255, 90, 90)" : undefined}
+        />
+        {quake.alert && (
+          <Stat
+            label="PAGER alert"
+            value={quake.alert}
+            color={rgbCss(alertColor(quake.alert))}
+            capitalize
+          />
+        )}
       </div>
 
       <a
@@ -257,11 +269,26 @@ function EventRow({ quake, onClick }: { quake: Quake; onClick: () => void }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  color,
+  capitalize,
+}: {
+  label: string;
+  value: string;
+  color?: string;
+  capitalize?: boolean;
+}) {
   return (
     <div>
       <div className="text-[10px] uppercase tracking-[0.2em] text-white/40">{label}</div>
-      <div className="mt-0.5 font-mono text-sm text-white/85">{value}</div>
+      <div
+        className={`mt-0.5 font-mono text-sm ${capitalize ? "capitalize" : ""} ${color ? "" : "text-white/85"}`}
+        style={color ? { color } : undefined}
+      >
+        {value}
+      </div>
     </div>
   );
 }

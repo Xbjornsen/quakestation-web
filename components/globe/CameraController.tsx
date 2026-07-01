@@ -5,10 +5,15 @@ import { OrbitControls } from "@react-three/drei";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { useGlobeStore } from "@/store/globeStore";
-import { latLonToVec3 } from "@/lib/geo";
+import { latLonToVec3, vec3ToLatLon } from "@/lib/geo";
+import { setCameraSnapshot } from "@/lib/cameraSnapshot";
 
 // Fixed wall-clock duration of a fly-to (seconds).
 const FLY_DURATION = 0.9;
+// How often the camera's look-at point is written to the (non-reactive)
+// share snapshot — no need for every-frame precision.
+const SNAPSHOT_INTERVAL = 0.25;
+const _snapshotDir = new THREE.Vector3();
 
 // Spherical-lerp between two unit direction vectors.
 function slerpDir(a: THREE.Vector3, b: THREE.Vector3, t: number, out: THREE.Vector3): THREE.Vector3 {
@@ -53,25 +58,34 @@ export function CameraController() {
   }, [flyToTarget, camera]);
 
   const dirRef = useRef(new THREE.Vector3());
+  const snapshotTimer = useRef(0);
 
   useFrame((_, dt) => {
     const f = flightRef.current;
-    if (!f) return;
+    if (f) {
+      f.p = Math.min(1, f.p + dt / FLY_DURATION);
+      // easeInOutQuad
+      const e = f.p < 0.5 ? 2 * f.p * f.p : 1 - Math.pow(-2 * f.p + 2, 2) / 2;
 
-    f.p = Math.min(1, f.p + dt / FLY_DURATION);
-    // easeInOutQuad
-    const e = f.p < 0.5 ? 2 * f.p * f.p : 1 - Math.pow(-2 * f.p + 2, 2) / 2;
-
-    const dir = slerpDir(f.start, f.target, e, dirRef.current);
-    camera.position.copy(dir).multiplyScalar(f.dist);
-    camera.lookAt(0, 0, 0);
-    controlsRef.current?.update();
-
-    if (f.p >= 1) {
-      camera.position.copy(f.target).multiplyScalar(f.dist);
+      const dir = slerpDir(f.start, f.target, e, dirRef.current);
+      camera.position.copy(dir).multiplyScalar(f.dist);
       camera.lookAt(0, 0, 0);
       controlsRef.current?.update();
-      clearFlyTo();
+
+      if (f.p >= 1) {
+        camera.position.copy(f.target).multiplyScalar(f.dist);
+        camera.lookAt(0, 0, 0);
+        controlsRef.current?.update();
+        clearFlyTo();
+      }
+    }
+
+    snapshotTimer.current += dt;
+    if (snapshotTimer.current >= SNAPSHOT_INTERVAL) {
+      snapshotTimer.current = 0;
+      _snapshotDir.copy(camera.position).normalize();
+      const { lat, lon } = vec3ToLatLon(_snapshotDir);
+      setCameraSnapshot(lat, lon);
     }
   });
 

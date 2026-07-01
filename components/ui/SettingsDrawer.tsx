@@ -42,6 +42,21 @@ export function SettingsDrawer() {
           </div>
         </Section>
 
+        <Section title="Magnitude labels">
+          <input
+            type="range"
+            min={1}
+            max={7}
+            step={0.5}
+            value={s.labelMinMag}
+            onChange={(e) => s.setLabelMinMag(Number(e.target.value))}
+            className="w-full accent-accent-cyan"
+          />
+          <div className="mt-1 font-mono text-xs text-white/70">
+            Show number on M ≥ {s.labelMinMag.toFixed(1)}
+          </div>
+        </Section>
+
         <Section title="Depth band">
           <div className="flex items-center gap-3">
             <div className="flex-1">

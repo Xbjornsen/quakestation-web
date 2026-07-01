@@ -22,6 +22,9 @@ interface GlobeState {
   swarmReturn: Swarm | null;
   minMagnitude: number;
   days: number;
+  // Minimum magnitude a loose marker needs to get a floating number label
+  // (swarm towers always get one, regardless of this).
+  labelMinMag: number;
   // Depth band (km below sea level) that quakes must fall within to render.
   // Defaults to the full USGS range so nothing is hidden until narrowed.
   depthMin: number;
@@ -49,6 +52,7 @@ interface GlobeState {
   setSwarmCount: (n: number) => void;
   setMinMagnitude: (m: number) => void;
   setDays: (d: number) => void;
+  setLabelMinMag: (m: number) => void;
   setDepthRange: (min: number, max: number) => void;
   setAutoRotateSpeed: (n: number) => void;
   toggle: (key: "showPlates" | "showVolcanoes" | "showSwarms" | "autoRotate") => void;
@@ -79,6 +83,7 @@ export const useGlobeStore = create<GlobeState>()(
   swarmReturn: null,
   minMagnitude: 2.5,
   days: 1,
+  labelMinMag: 4,
   depthMin: DEPTH_MIN,
   depthMax: DEPTH_MAX,
   showPlates: false,
@@ -103,6 +108,7 @@ export const useGlobeStore = create<GlobeState>()(
   setSwarmCount: (swarmCount) => set({ swarmCount }),
   setMinMagnitude: (minMagnitude) => set({ minMagnitude }),
   setDays: (days) => set({ days }),
+  setLabelMinMag: (labelMinMag) => set({ labelMinMag }),
   // Keep the band ordered and clamped so the two sliders can't cross.
   setDepthRange: (min, max) =>
     set({
@@ -163,6 +169,7 @@ export const useGlobeStore = create<GlobeState>()(
       partialize: (s) => ({
         minMagnitude: s.minMagnitude,
         days: s.days,
+        labelMinMag: s.labelMinMag,
         depthMin: s.depthMin,
         depthMax: s.depthMax,
         showPlates: s.showPlates,
