@@ -16,7 +16,7 @@ import { useMemo } from "react";
 import { detectSwarms, type Swarm } from "@/lib/swarm";
 import { useQuakes } from "@/hooks/useQuakes";
 import { useIsMobile } from "@/hooks/useIsMobile";
-import { REPLAY_MIN_MAG } from "@/lib/usgs";
+import { REPLAY_MIN_MAG, GLOBE_MAX_DAYS } from "@/lib/usgs";
 import { useGlobeStore } from "@/store/globeStore";
 
 // Stable empty reference so suppressing swarm towers during replay doesn't
@@ -35,7 +35,10 @@ function FallbackEarth() {
 export default function GlobeScene() {
   const isMobile = useIsMobile();
   const minMag = useGlobeStore((s) => s.minMagnitude);
-  const days = useGlobeStore((s) => s.days);
+  // Clamp even though every write path (Settings drawer, ShareViewSync)
+  // already caps this — a value written before that guard existed could
+  // still be sitting in a returning visitor's persisted localStorage.
+  const days = Math.min(useGlobeStore((s) => s.days), GLOBE_MAX_DAYS);
   const { data } = useQuakes({ minMagnitude: minMag, days });
   const setQuakes = useGlobeStore((s) => s.setQuakes);
   const setSwarmCount = useGlobeStore((s) => s.setSwarmCount);

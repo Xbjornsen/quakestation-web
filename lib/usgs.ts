@@ -2,6 +2,23 @@
 // sequence rather than flooding the globe with M2.5 background noise.
 export const REPLAY_MIN_MAG = 4;
 
+// Time-window presets for the stats page's charts, which only ever compute
+// aggregates (bar charts, histograms) — cheap at any event count.
+export const TIME_WINDOWS: Array<{ label: string; days: number }> = [
+  { label: "1d", days: 1 },
+  { label: "7d", days: 7 },
+  { label: "30d", days: 30 },
+  { label: "1y", days: 365 },
+];
+
+// The live 3D globe renders every event as geometry, plus a live DOM label
+// per significant one — a year of global M2.5+ data means thousands of
+// simultaneous labels, which hangs the tab. So the globe's own filter never
+// offers a window longer than 30 days, and any window applied to it (e.g.
+// from a shared link) gets clamped to this ceiling.
+export const GLOBE_MAX_DAYS = 30;
+export const GLOBE_TIME_WINDOWS = TIME_WINDOWS.filter((w) => w.days <= GLOBE_MAX_DAYS);
+
 // PAGER alert level USGS assigns to significant events (estimated impact),
 // not to be confused with magnitude. Most events have no alert at all.
 export type AlertLevel = "green" | "yellow" | "orange" | "red";

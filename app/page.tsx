@@ -53,9 +53,9 @@ export default function Page() {
             without needing a hard opaque bar. */}
         <div className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-ink-950/80 via-ink-950/35 to-transparent" />
         <header className="pointer-events-auto flex items-start justify-between gap-3 p-4 sm:p-6">
-          <div className="flex flex-col gap-2.5">
+          <div className="flex min-w-0 flex-col gap-2.5">
             <div className="flex flex-col gap-1">
-              <h1 className="font-display text-sm font-semibold uppercase tracking-[0.4em] text-white/80">
+              <h1 className="truncate font-display text-sm font-semibold uppercase tracking-[0.4em] text-white/80">
                 QuakeStation
               </h1>
               <HeaderStats />
@@ -63,7 +63,7 @@ export default function Page() {
             </div>
             <HeaderPills />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <Link
               href="/stats"
               aria-label="Statistics"

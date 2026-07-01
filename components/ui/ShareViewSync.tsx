@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { useGlobeStore } from "@/store/globeStore";
+import { GLOBE_MAX_DAYS } from "@/lib/usgs";
 
 // One-time application of a shared view's `?min=&days=&lat=&lon=` params
 // (written by ShareButton) so opening a shared link reproduces the sender's
@@ -31,7 +32,10 @@ export function ShareViewSync() {
     }
     if (days != null) {
       const n = Number(days);
-      if (Number.isFinite(n)) setDays(n);
+      // Clamp: the live globe renders every event as geometry + a per-event
+      // label, so an unbounded `days` from a crafted/shared URL could hang
+      // the tab (a year of global data is thousands of labels).
+      if (Number.isFinite(n)) setDays(Math.min(Math.max(n, 1), GLOBE_MAX_DAYS));
     }
     if (lat != null && lon != null) {
       const la = Number(lat);
