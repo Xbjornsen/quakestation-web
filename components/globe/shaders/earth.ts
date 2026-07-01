@@ -53,6 +53,17 @@ export const earthFragment = /* glsl */ `
       color += vec3(spec) * 0.2;
     }
 
+    // Soft highlight roll-off: this shader writes straight to gl_FragColor
+    // with no tone mapping, so the brightening above pushes already-bright
+    // ice/snow well past 1.0 and it hard-clips to flat white, losing all
+    // relief. Below the knee, colour is untouched (oceans/land keep their
+    // current brightness); above it, values compress asymptotically toward
+    // 1.0 instead of clipping, so ice keeps visible shading.
+    vec3 knee = vec3(0.8);
+    vec3 range = vec3(1.0) - knee;
+    vec3 excess = max(color - knee, vec3(0.0));
+    color = min(color, knee) + range * excess / (excess + range);
+
     // No inner rim — the atmosphere shell handles the edge glow.
 
     // Silence the unused night map / sun direction uniforms.

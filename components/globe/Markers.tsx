@@ -1,11 +1,12 @@
 "use client";
 
+import { Html } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { Quake } from "@/lib/usgs";
-import { latLonToVec3 } from "@/lib/geo";
-import { magnitudeColor } from "@/lib/utils";
+import { latLonToVec3, facingOpacity } from "@/lib/geo";
+import { magnitudeColor, rgbCss } from "@/lib/utils";
 import { useGlobeStore } from "@/store/globeStore";
 import { ringVertex, ringFragment, discRadius } from "./shaders/ring";
 
@@ -37,6 +38,7 @@ function stablePhase(id: string): number {
 export function Markers({ quakes }: { quakes: Quake[] }) {
   const matRef = useRef<THREE.ShaderMaterial>(null);
   const focusQuake = useGlobeStore((s) => s.focusQuake);
+  const labelMinMag = useGlobeStore((s) => s.labelMinMag);
 
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry();
@@ -93,10 +95,37 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
 
   useEffect(() => () => geometry.dispose(), [geometry]);
 
+  // Fixed-size magnitude labels for quakes at or above the user's threshold.
+  const labels = useMemo(
+    () =>
+      quakes
+        .filter((q) => q.mag >= labelMinMag)
+        .map((q) => {
+          const dir = latLonToVec3(q.lat, q.lon, 1).normalize();
+          return {
+            id: q.id,
+            mag: q.mag,
+            dir,
+            position: dir.clone().multiplyScalar(1.01).toArray() as [number, number, number],
+          };
+        }),
+    [quakes, labelMinMag],
+  );
+  const labelRefs = useRef(new Map<string, HTMLDivElement>());
+  const _labelPos = useRef(new THREE.Vector3());
+
   const uniforms = useMemo(() => ({ uTime: { value: 0 } }), []);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     if (matRef.current) matRef.current.uniforms.uTime.value = clock.elapsedTime;
+    // Fade labels out as their quake curves to the far side of the globe,
+    // so numbers don't float through the sphere toward the camera.
+    for (const l of labels) {
+      const el = labelRefs.current.get(l.id);
+      if (!el) continue;
+      _labelPos.current.copy(l.dir).multiplyScalar(1.01);
+      el.style.opacity = String(facingOpacity(l.dir, _labelPos.current, camera.position));
+    }
   });
 
   const handleClick = (e: any) => {
@@ -111,19 +140,36 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
   if (quakes.length === 0) return null;
 
   return (
-    <mesh geometry={geometry} frustumCulled={false} onClick={handleClick}>
-      <shaderMaterial
-        ref={matRef}
-        vertexShader={ringVertex}
-        fragmentShader={ringFragment}
-        uniforms={uniforms}
-        transparent
-        depthTest={false}
-        depthWrite={false}
-        blending={THREE.NormalBlending}
-        toneMapped={false}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
+    <>
+      <mesh geometry={geometry} frustumCulled={false} onClick={handleClick}>
+        <shaderMaterial
+          ref={matRef}
+          vertexShader={ringVertex}
+          fragmentShader={ringFragment}
+          uniforms={uniforms}
+          transparent
+          depthTest={false}
+          depthWrite={false}
+          blending={THREE.NormalBlending}
+          toneMapped={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      {labels.map((l) => (
+        <Html key={l.id} position={l.position} center zIndexRange={[4, 0]}>
+          <div
+            ref={(el) => {
+              if (el) labelRefs.current.set(l.id, el);
+              else labelRefs.current.delete(l.id);
+            }}
+            className="pointer-events-none -translate-y-3 select-none whitespace-nowrap rounded-full border border-white/15 bg-ink-900/75 px-1.5 py-0.5 font-mono text-[10px] font-semibold backdrop-blur-sm"
+            style={{ color: rgbCss(magnitudeColor(l.mag)) }}
+          >
+            M{l.mag.toFixed(1)}
+          </div>
+        </Html>
+      ))}
+    </>
   );
 }

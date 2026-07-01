@@ -1,11 +1,12 @@
 "use client";
 
+import { Html } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { Swarm } from "@/lib/swarm";
-import { latLonToVec3 } from "@/lib/geo";
-import { magnitudeColor } from "@/lib/utils";
+import { latLonToVec3, facingOpacity } from "@/lib/geo";
+import { magnitudeColor, rgbCss } from "@/lib/utils";
 import { useGlobeStore } from "@/store/globeStore";
 import { ringVertex, ringFragment } from "./shaders/ring";
 
@@ -65,9 +66,15 @@ export function SwarmSpines({ swarms }: { swarms: Swarm[] }) {
   const focusSwarm = useGlobeStore((s) => s.focusSwarm);
   const { gl } = useThree();
 
-  const { entries, towerHeights } = useMemo(() => {
+  const { entries, towerHeights, labels } = useMemo(() => {
     const entries: StackEntry[] = [];
     const towerHeights: number[] = [];
+    const labels: Array<{
+      id: string;
+      mag: number;
+      dir: THREE.Vector3;
+      position: [number, number, number];
+    }> = [];
     swarms.forEach((s, si) => {
       const dir = latLonToVec3(s.centroidLat, s.centroidLon, 1).normalize();
       const ordered = [...s.events].sort((a, b) => b.mag - a.mag).slice(0, MAX_STACK);
@@ -80,9 +87,19 @@ export function SwarmSpines({ swarms }: { swarms: Swarm[] }) {
           color: magnitudeColor(q.mag),
         });
       });
-      towerHeights[si] = STACK_BASE + (ordered.length - 1) * STACK_STEP;
+      const height = STACK_BASE + (ordered.length - 1) * STACK_STEP;
+      towerHeights[si] = height;
+      labels.push({
+        id: s.id,
+        mag: s.maxMag,
+        dir: dir.clone(),
+        position: dir
+          .clone()
+          .multiplyScalar(height + STACK_STEP * 0.6)
+          .toArray() as [number, number, number],
+      });
     });
-    return { entries, towerHeights };
+    return { entries, towerHeights, labels };
   }, [swarms]);
 
   // Baked quads: one per event, each lying in the plane perpendicular to its
@@ -191,9 +208,19 @@ export function SwarmSpines({ swarms }: { swarms: Swarm[] }) {
   );
 
   const uniforms = useMemo(() => ({ uTime: { value: 0 } }), []);
+  const labelRefs = useRef(new Map<string, HTMLDivElement>());
+  const _labelPos = useRef(new THREE.Vector3());
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     if (matRef.current) matRef.current.uniforms.uTime.value = clock.elapsedTime;
+    // Fade tower labels out as their swarm curves to the far side of the
+    // globe, matching the stem shader's own facing-based fade.
+    for (const l of labels) {
+      const el = labelRefs.current.get(l.id);
+      if (!el) continue;
+      _labelPos.current.set(l.position[0], l.position[1], l.position[2]);
+      el.style.opacity = String(facingOpacity(l.dir, _labelPos.current, camera.position));
+    }
   });
 
   const onHitClick = (e: any) => {
@@ -245,6 +272,21 @@ export function SwarmSpines({ swarms }: { swarms: Swarm[] }) {
         <cylinderGeometry args={[1, 1, 1, 6, 1, true]} />
         <meshBasicMaterial colorWrite={false} depthWrite={false} />
       </instancedMesh>
+
+      {labels.map((l) => (
+        <Html key={l.id} position={l.position} center zIndexRange={[4, 0]}>
+          <div
+            ref={(el) => {
+              if (el) labelRefs.current.set(l.id, el);
+              else labelRefs.current.delete(l.id);
+            }}
+            className="pointer-events-none select-none whitespace-nowrap rounded-full border border-white/15 bg-ink-900/75 px-1.5 py-0.5 font-mono text-[10px] font-semibold backdrop-blur-sm"
+            style={{ color: rgbCss(magnitudeColor(l.mag)) }}
+          >
+            M{l.mag.toFixed(1)}
+          </div>
+        </Html>
+      ))}
     </>
   );
 }

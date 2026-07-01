@@ -7,14 +7,9 @@ import { useGlobeStore } from "@/store/globeStore";
 import { useQuakes } from "@/hooks/useQuakes";
 import { useVolcanoes } from "@/hooks/useVolcanoes";
 import { detectSwarms, type Swarm } from "@/lib/swarm";
-import { magnitudeColor } from "@/lib/utils";
+import { magnitudeColor, rgbCss } from "@/lib/utils";
 import type { Quake } from "@/lib/usgs";
 import type { Volcano } from "@/lib/features";
-
-function rgbCss([r, g, b]: [number, number, number], alpha = 1): string {
-  const to = (v: number) => Math.round(v * 255);
-  return `rgba(${to(r)}, ${to(g)}, ${to(b)}, ${alpha})`;
-}
 
 const MAG_BUCKETS: Array<{ label: string; min: number; max: number; mid: number }> = [
   { label: "2–3", min: 2, max: 3, mid: 2.5 },
@@ -33,7 +28,7 @@ interface Stats {
   magHistogram: number[];
   perDay: Array<{ day: number; count: number }>;
   depth: { shallow: number; intermediate: number; deep: number };
-  regions: Array<{ name: string; count: number }>;
+  regions: Array<{ name: string; count: number; lat: number; lon: number }>;
 }
 
 function regionOf(place: string): string {
@@ -48,6 +43,9 @@ function computeStats(quakes: Quake[], days: number): Stats {
   let m5plus = 0;
   const depth = { shallow: 0, intermediate: 0, deep: 0 };
   const regionCounts = new Map<string, number>();
+  // Centroid per region (for "fly there" links) — summed lat/lon, divided
+  // once at the end.
+  const regionCoords = new Map<string, { sumLat: number; sumLon: number }>();
 
   // Per-day binning, anchored to the most recent event so the last bucket
   // is "today" regardless of clock skew between client and feed.
@@ -73,6 +71,13 @@ function computeStats(quakes: Quake[], days: number): Stats {
 
     const region = regionOf(q.place);
     regionCounts.set(region, (regionCounts.get(region) ?? 0) + 1);
+    const coords = regionCoords.get(region);
+    if (coords) {
+      coords.sumLat += q.lat;
+      coords.sumLon += q.lon;
+    } else {
+      regionCoords.set(region, { sumLat: q.lat, sumLon: q.lon });
+    }
 
     const ageDays = Math.floor((now - q.time) / dayMs);
     const idx = buckets - 1 - ageDays;
@@ -80,7 +85,10 @@ function computeStats(quakes: Quake[], days: number): Stats {
   }
 
   const regions = [...regionCounts.entries()]
-    .map(([name, count]) => ({ name, count }))
+    .map(([name, count]) => {
+      const coords = regionCoords.get(name)!;
+      return { name, count, lat: coords.sumLat / count, lon: coords.sumLon / count };
+    })
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
 
@@ -103,7 +111,7 @@ interface SwarmStats {
   totalEvents: number;
   largest: Swarm | null; // most events
   strongest: Swarm | null; // highest peak magnitude
-  top: Array<{ name: string; count: number }>;
+  top: Array<{ name: string; count: number; lat: number; lon: number }>;
 }
 
 function swarmPlace(s: Swarm): string {
@@ -123,7 +131,12 @@ function computeSwarmStats(swarms: Swarm[]): SwarmStats {
   const top = [...swarms]
     .sort((a, b) => b.events.length - a.events.length)
     .slice(0, 6)
-    .map((s) => ({ name: swarmPlace(s), count: s.events.length }));
+    .map((s) => ({
+      name: swarmPlace(s),
+      count: s.events.length,
+      lat: s.centroidLat,
+      lon: s.centroidLon,
+    }));
   return { total: swarms.length, totalEvents, largest, strongest, top };
 }
 
@@ -562,29 +575,62 @@ function DepthChart({
   );
 }
 
-function TopRegions({ regions }: { regions: Array<{ name: string; count: number }> }) {
+interface RegionRow {
+  name: string;
+  count: number;
+  lat?: number;
+  lon?: number;
+}
+
+function TopRegions({ regions }: { regions: RegionRow[] }) {
   if (regions.length === 0) {
     return <p className="text-sm text-white/40">No data.</p>;
   }
   const max = Math.max(1, ...regions.map((r) => r.count));
   return (
     <div className="flex flex-col gap-2.5">
-      {regions.map((r) => (
-        <div key={r.name} className="flex items-center gap-3">
-          <span className="w-32 shrink-0 truncate text-sm text-white/75 sm:w-40" title={r.name}>
-            {r.name}
-          </span>
+      {regions.map((r) => {
+        const bar = (
           <div className="relative h-5 flex-1 overflow-hidden rounded-md bg-white/5">
             <div
               className="h-full rounded-md bg-gradient-to-r from-accent-cyan/40 to-accent-cyan/80"
               style={{ width: `${(r.count / max) * 100}%` }}
             />
           </div>
+        );
+        const countLabel = (
           <span className="w-8 shrink-0 text-right font-mono text-sm text-white/70">
             {r.count}
           </span>
-        </div>
-      ))}
+        );
+        const nameLabel = (
+          <span className="w-32 shrink-0 truncate text-sm text-white/75 sm:w-40" title={r.name}>
+            {r.name}
+          </span>
+        );
+
+        if (r.lat != null && r.lon != null) {
+          return (
+            <Link
+              key={r.name}
+              href={`/?lat=${r.lat.toFixed(2)}&lon=${r.lon.toFixed(2)}`}
+              className="group flex items-center gap-3 rounded-md transition-colors hover:bg-white/5"
+              title={`Fly to ${r.name} on the globe`}
+            >
+              {nameLabel}
+              {bar}
+              {countLabel}
+            </Link>
+          );
+        }
+        return (
+          <div key={r.name} className="flex items-center gap-3">
+            {nameLabel}
+            {bar}
+            {countLabel}
+          </div>
+        );
+      })}
     </div>
   );
 }
