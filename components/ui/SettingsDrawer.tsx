@@ -1,6 +1,7 @@
 "use client";
 
 import { useGlobeStore, DEPTH_MIN, DEPTH_MAX } from "@/store/globeStore";
+import { GLOBE_TIME_WINDOWS } from "@/lib/usgs";
 import { X } from "lucide-react";
 
 export function SettingsDrawer() {
@@ -90,17 +91,17 @@ export function SettingsDrawer() {
 
         <Section title="Time window">
           <div className="grid grid-cols-3 gap-2">
-            {[1, 7, 30].map((d) => (
+            {GLOBE_TIME_WINDOWS.map((w) => (
               <button
-                key={d}
-                onClick={() => s.setDays(d)}
+                key={w.days}
+                onClick={() => s.setDays(w.days)}
                 className={`rounded-md border px-3 py-2 text-xs ${
-                  s.days === d
+                  s.days === w.days
                     ? "border-accent-cyan/60 bg-accent-cyan/10 text-accent-cyan"
                     : "border-white/15 bg-white/5 text-white/70 hover:bg-white/10"
                 }`}
               >
-                {d}d
+                {w.label}
               </button>
             ))}
           </div>

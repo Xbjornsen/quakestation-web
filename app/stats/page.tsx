@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ArrowLeft, Activity, Layers, Flame, Gauge, Mountain } from "lucide-react";
 import { useGlobeStore } from "@/store/globeStore";
 import { useQuakes } from "@/hooks/useQuakes";
 import { useVolcanoes } from "@/hooks/useVolcanoes";
 import { detectSwarms, type Swarm } from "@/lib/swarm";
 import { magnitudeColor, rgbCss } from "@/lib/utils";
-import type { Quake } from "@/lib/usgs";
+import { TIME_WINDOWS, type Quake } from "@/lib/usgs";
 import type { Volcano } from "@/lib/features";
 
 const MAG_BUCKETS: Array<{ label: string; min: number; max: number; mid: number }> = [
@@ -27,6 +27,10 @@ interface Stats {
   m5plus: number;
   magHistogram: number[];
   perDay: Array<{ day: number; count: number }>;
+  // Bucket width in days for `perDay` (1 = daily, 7 = weekly). Long windows
+  // bucket by week so the bar chart doesn't collapse into hundreds of
+  // imperceptibly thin daily bars.
+  perDayBucketDays: number;
   depth: { shallow: number; intermediate: number; deep: number };
   regions: Array<{ name: string; count: number; lat: number; lon: number }>;
 }
@@ -47,11 +51,12 @@ function computeStats(quakes: Quake[], days: number): Stats {
   // once at the end.
   const regionCoords = new Map<string, { sumLat: number; sumLon: number }>();
 
-  // Per-day binning, anchored to the most recent event so the last bucket
-  // is "today" regardless of clock skew between client and feed.
+  // Per-day (or per-week, for long windows) binning, anchored to now so the
+  // last bucket is "today" regardless of clock skew between client and feed.
   const dayMs = 24 * 60 * 60 * 1000;
   const now = Date.now();
-  const buckets = Math.max(1, Math.round(days));
+  const perDayBucketDays = days > 60 ? 7 : 1;
+  const buckets = Math.max(1, Math.ceil(days / perDayBucketDays));
   const perDayCounts = new Array<number>(buckets).fill(0);
 
   for (const q of quakes) {
@@ -80,7 +85,8 @@ function computeStats(quakes: Quake[], days: number): Stats {
     }
 
     const ageDays = Math.floor((now - q.time) / dayMs);
-    const idx = buckets - 1 - ageDays;
+    const ageBuckets = Math.floor(ageDays / perDayBucketDays);
+    const idx = buckets - 1 - ageBuckets;
     if (idx >= 0 && idx < buckets) perDayCounts[idx]++;
   }
 
@@ -101,6 +107,7 @@ function computeStats(quakes: Quake[], days: number): Stats {
     m5plus,
     magHistogram,
     perDay: perDayCounts.map((count, day) => ({ day, count })),
+    perDayBucketDays,
     depth,
     regions,
   };
@@ -166,8 +173,12 @@ function computeVolcanoStats(volcanoes: Volcano[]): VolcanoStats {
 
 export default function StatsPage() {
   const minMagnitude = useGlobeStore((s) => s.minMagnitude);
-  const days = useGlobeStore((s) => s.days);
-  const setDays = useGlobeStore((s) => s.setDays);
+  // The stats page's window is local, not the shared globe filter: charts
+  // just aggregate counts, so a year of data is cheap here, but the same
+  // window would hang the live 3D globe (thousands of per-event labels).
+  // Seed from the globe's current window so the two start in sync, but
+  // don't write back — picking "1y" here must never reach the globe.
+  const [days, setDays] = useState(() => useGlobeStore.getState().days);
   const { data, isLoading, isError } = useQuakes({ minMagnitude, days });
   const { data: volcanoData } = useVolcanoes(true);
 
@@ -195,9 +206,15 @@ export default function StatsPage() {
             </h1>
             <p className="text-sm text-white/45">
               Over the last{" "}
-              <span className="font-mono text-white/70">{days}</span>{" "}
-              {days === 1 ? "day" : "days"} · magnitude{" "}
-              <span className="font-mono text-white/70">{minMagnitude}+</span>
+              {days === 365 ? (
+                <span className="font-mono text-white/70">year</span>
+              ) : (
+                <>
+                  <span className="font-mono text-white/70">{days}</span>{" "}
+                  {days === 1 ? "day" : "days"}
+                </>
+              )}{" "}
+              · magnitude <span className="font-mono text-white/70">{minMagnitude}+</span>
             </p>
           </div>
 
@@ -206,17 +223,17 @@ export default function StatsPage() {
               Window
             </span>
             <div className="flex gap-1.5">
-              {[1, 7, 30].map((d) => (
+              {TIME_WINDOWS.map((w) => (
                 <button
-                  key={d}
-                  onClick={() => setDays(d)}
+                  key={w.days}
+                  onClick={() => setDays(w.days)}
                   className={`rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
-                    days === d
+                    days === w.days
                       ? "border-accent-cyan/60 bg-accent-cyan/10 text-accent-cyan"
                       : "border-white/15 bg-white/5 text-white/65 hover:bg-white/10"
                   }`}
                 >
-                  {d}d
+                  {w.label}
                 </button>
               ))}
             </div>
@@ -273,8 +290,8 @@ export default function StatsPage() {
                 <MagHistogram histogram={stats.magHistogram} />
               </Panel>
 
-              <Panel title="Quakes per day">
-                <PerDayChart perDay={stats.perDay} days={days} />
+              <Panel title={stats.perDayBucketDays >= 7 ? "Quakes per week" : "Quakes per day"}>
+                <PerDayChart perDay={stats.perDay} bucketDays={stats.perDayBucketDays} />
               </Panel>
 
               <Panel title="Depth distribution">
@@ -469,21 +486,23 @@ function MagHistogram({ histogram }: { histogram: number[] }) {
 
 function PerDayChart({
   perDay,
-  days,
+  bucketDays,
 }: {
   perDay: Array<{ day: number; count: number }>;
-  days: number;
+  bucketDays: number;
 }) {
   const max = Math.max(1, ...perDay.map((d) => d.count));
-  // For wide windows (30d) labels get crowded; only label a few.
-  const labelEvery = days > 14 ? 5 : days > 7 ? 2 : 1;
+  // For wide windows labels get crowded; only label a few, based on how
+  // many bars actually render (not the raw day count).
+  const labelEvery = perDay.length > 40 ? 4 : perDay.length > 14 ? 2 : 1;
+  const unit = bucketDays >= 7 ? "w" : "d";
   return (
     <div className="flex h-44 items-stretch gap-1">
       {perDay.map((d) => {
         const pct = (d.count / max) * 100;
         const ago = perDay.length - 1 - d.day;
         const showLabel = ago % labelEvery === 0;
-        const label = ago === 0 ? "now" : `-${ago}d`;
+        const label = ago === 0 ? "now" : `-${ago}${unit}`;
         return (
           <div key={d.day} className="flex flex-1 flex-col items-center gap-2">
             <div className="flex w-full flex-1 items-end">
