@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Activity, Layers, Flame, Gauge, Mountain } from "lucide-react";
 import { useGlobeStore } from "@/store/globeStore";
 import { useQuakes } from "@/hooks/useQuakes";
@@ -291,7 +291,7 @@ export default function StatsPage() {
               </Panel>
 
               <Panel title={stats.perDayBucketDays >= 7 ? "Quakes per week" : "Quakes per day"}>
-                <PerDayChart perDay={stats.perDay} bucketDays={stats.perDayBucketDays} />
+                <TrendChart perDay={stats.perDay} bucketDays={stats.perDayBucketDays} />
               </Panel>
 
               <Panel title="Depth distribution">
@@ -484,27 +484,84 @@ function MagHistogram({ histogram }: { histogram: number[] }) {
   );
 }
 
-function PerDayChart({
+const TREND_COLOR = "#5ce1ff"; // accent-cyan
+
+// Tracks a element's rendered width so the trend chart can pick its own form
+// factor (bars vs. line) from real available space rather than a guess.
+function useContainerWidth<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w) setWidth(w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, width] as const;
+}
+
+// Below this many px per bucket, a bar reads as a hairline (and enough of
+// them overflow the card on mobile) — a line/area reads a dense trend far
+// better than packed bars, which is also the textbook form for "trend over
+// time" regardless of density.
+const MIN_BAR_PX = 16;
+
+function bucketLabel(index: number, total: number, unit: "d" | "w"): string {
+  const ago = total - 1 - index;
+  return ago === 0 ? "now" : `-${ago}${unit}`;
+}
+
+function TrendChart({
   perDay,
   bucketDays,
 }: {
   perDay: Array<{ day: number; count: number }>;
   bucketDays: number;
 }) {
+  const [containerRef, width] = useContainerWidth<HTMLDivElement>();
+  const n = perDay.length;
+  const unit = bucketDays >= 7 ? "w" : "d";
+  // Before the first real measurement (mount), guess from bucket count so
+  // there's no flash of bars doomed to be replaced by a line a frame later.
+  const useLine = width > 0 ? width / n < MIN_BAR_PX : n > 14;
   const max = Math.max(1, ...perDay.map((d) => d.count));
   // For wide windows labels get crowded; only label a few, based on how
-  // many bars actually render (not the raw day count).
-  const labelEvery = perDay.length > 40 ? 4 : perDay.length > 14 ? 2 : 1;
-  const unit = bucketDays >= 7 ? "w" : "d";
+  // many buckets actually render (not the raw day count).
+  const labelEvery = n > 40 ? 4 : n > 14 ? 2 : 1;
+
+  return (
+    <div ref={containerRef} className="min-w-0">
+      {useLine ? (
+        <LineTrend perDay={perDay} max={max} unit={unit} labelEvery={labelEvery} />
+      ) : (
+        <BarTrend perDay={perDay} max={max} unit={unit} labelEvery={labelEvery} />
+      )}
+    </div>
+  );
+}
+
+function BarTrend({
+  perDay,
+  max,
+  unit,
+  labelEvery,
+}: {
+  perDay: Array<{ day: number; count: number }>;
+  max: number;
+  unit: "d" | "w";
+  labelEvery: number;
+}) {
   return (
     <div className="flex h-44 items-stretch gap-1">
-      {perDay.map((d) => {
+      {perDay.map((d, i) => {
         const pct = (d.count / max) * 100;
-        const ago = perDay.length - 1 - d.day;
-        const showLabel = ago % labelEvery === 0;
-        const label = ago === 0 ? "now" : `-${ago}${unit}`;
+        const showLabel = (perDay.length - 1 - i) % labelEvery === 0;
         return (
-          <div key={d.day} className="flex flex-1 flex-col items-center gap-2">
+          <div key={d.day} className="flex min-w-0 flex-1 flex-col items-center gap-2">
             <div className="flex w-full flex-1 items-end">
               <div
                 className="w-full rounded-t-sm bg-accent-cyan/70 transition-all hover:bg-accent-cyan"
@@ -512,12 +569,153 @@ function PerDayChart({
                 title={`${d.count} quakes`}
               />
             </div>
-            <span className="h-3 font-mono text-[9px] text-white/40">
-              {showLabel ? label : ""}
+            <span className="h-3 truncate font-mono text-[9px] text-white/40">
+              {showLabel ? bucketLabel(i, perDay.length, unit) : ""}
             </span>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// Line + area trend, used once bars would pack too tight to read. Straight
+// (unsmoothed) segments so the line never overshoots a local min/max — an
+// honest read of the same counts the bars would show. Hover (or the last
+// touch position) snaps a crosshair to the nearest bucket; with nothing
+// hovered it defaults to "now" so the headline number is visible at rest.
+function LineTrend({
+  perDay,
+  max,
+  unit,
+  labelEvery,
+}: {
+  perDay: Array<{ day: number; count: number }>;
+  max: number;
+  unit: "d" | "w";
+  labelEvery: number;
+}) {
+  const n = perDay.length;
+  const W = 600;
+  const H = 160;
+  const PAD_TOP = 16;
+  const PAD_BOTTOM = 2;
+  const plotH = H - PAD_TOP - PAD_BOTTOM;
+
+  const points = useMemo(
+    () =>
+      perDay.map((d, i) => ({
+        x: n === 1 ? W / 2 : (i / (n - 1)) * W,
+        y: PAD_TOP + plotH - (d.count / max) * plotH,
+        count: d.count,
+      })),
+    [perDay, n, max, plotH],
+  );
+  const linePath = useMemo(
+    () => points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" "),
+    [points],
+  );
+  const areaPath = useMemo(() => {
+    const base = H - PAD_BOTTOM;
+    return `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${base} L ${points[0].x.toFixed(1)} ${base} Z`;
+  }, [linePath, points]);
+
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const gradientId = useId();
+  const activeIndex = hoverIndex ?? n - 1;
+  const active = points[activeIndex];
+
+  const trackPointer = (e: React.PointerEvent<SVGSVGElement>) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const relX = ((e.clientX - rect.left) / rect.width) * W;
+    let nearest = 0;
+    let bestDist = Infinity;
+    points.forEach((p, i) => {
+      const dist = Math.abs(p.x - relX);
+      if (dist < bestDist) {
+        bestDist = dist;
+        nearest = i;
+      }
+    });
+    setHoverIndex(nearest);
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="relative h-40 w-full">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${W} ${H}`}
+          preserveAspectRatio="none"
+          className="h-full w-full touch-none"
+          onPointerMove={trackPointer}
+          onPointerDown={trackPointer}
+          onPointerLeave={() => setHoverIndex(null)}
+        >
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={TREND_COLOR} stopOpacity={0.22} />
+              <stop offset="100%" stopColor={TREND_COLOR} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <line
+            x1={0}
+            y1={H - PAD_BOTTOM}
+            x2={W}
+            y2={H - PAD_BOTTOM}
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth={1}
+          />
+          <path d={areaPath} fill={`url(#${gradientId})`} stroke="none" />
+          <path
+            d={linePath}
+            fill="none"
+            stroke={TREND_COLOR}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <line
+            x1={active.x}
+            y1={PAD_TOP}
+            x2={active.x}
+            y2={H - PAD_BOTTOM}
+            stroke="rgba(255,255,255,0.18)"
+            strokeWidth={1}
+          />
+          <circle
+            cx={active.x}
+            cy={active.y}
+            r={4}
+            fill={TREND_COLOR}
+            stroke="#0a0d18"
+            strokeWidth={2}
+          />
+        </svg>
+        <div
+          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md border border-white/10 bg-ink-900/95 px-2 py-1 shadow-lg"
+          style={{
+            left: `${Math.min(92, Math.max(8, (active.x / W) * 100))}%`,
+            top: `${(active.y / H) * 100}%`,
+            marginTop: -10,
+          }}
+        >
+          <div className="font-mono text-xs font-semibold text-white/90">{active.count}</div>
+          <div className="text-[10px] text-white/45">
+            {bucketLabel(activeIndex, n, unit) === "now" ? "Now" : bucketLabel(activeIndex, n, unit)}
+          </div>
+        </div>
+      </div>
+      <div className="flex">
+        {perDay.map((d, i) => (
+          <span key={d.day} className="h-3 flex-1 truncate text-center font-mono text-[9px] text-white/40">
+            {i % labelEvery === 0 ? bucketLabel(i, n, unit) : ""}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
