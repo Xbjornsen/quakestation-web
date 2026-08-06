@@ -141,6 +141,11 @@ export function SettingsDrawer() {
             checked={s.showSwarms}
             onChange={() => s.toggle("showSwarms")}
           />
+          <Toggle
+            label="Geomagnetic poles"
+            checked={s.showGeomagneticPoles}
+            onChange={() => s.toggle("showGeomagneticPoles")}
+          />
         </Section>
 
         <Section title="Globe">

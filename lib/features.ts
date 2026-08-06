@@ -15,12 +15,38 @@ export interface Volcano {
 
 // A unit-of-selection for the detail panel. Mutually exclusive with a
 // selected Quake / Swarm in the store.
-export type SelectedFeature = { kind: "volcano"; data: Volcano };
+export type SelectedFeature = { kind: "volcano"; data: Volcano } | { kind: "pole"; data: PoleInfo };
 
 export interface PlateBoundary {
   name: string;
   // Array of [lon, lat] vertices.
   coordinates: [number, number][];
+}
+
+export interface PolePosition {
+  year: number;
+  lat: number;
+  lon: number;
+}
+
+export interface MagneticPoles {
+  northDip: PolePosition[];
+  southDip: PolePosition[];
+  northGeomagnetic: PolePosition[];
+  southGeomagnetic: PolePosition[];
+}
+
+export interface PoleInfo {
+  label: string;
+  kind: "dip" | "geomagnetic";
+  lat: number;
+  lon: number;
+  // Calendar year the shown position was interpolated for ("as of").
+  year: number;
+  // True once `year` falls in the WMM/IGRF forecast window (2025-2030) —
+  // the model is extrapolating rather than fitting measured survey data.
+  predicted: boolean;
+  distanceFromGeographicPoleKm: number;
 }
 
 interface PlateGeoJSON {
@@ -50,4 +76,15 @@ export async function loadPlateBoundaries(): Promise<PlateBoundary[]> {
 
 export function loadVolcanoes(): Promise<Volcano[]> {
   return fetchJson<Volcano[]>("/data/volcanoes.json");
+}
+
+// Shared between PoleMarkers (always mounted) and GeomagneticPoles (mounted
+// only when toggled on) — cache the promise so both get one fetch.
+let magneticPolesPromise: Promise<MagneticPoles> | null = null;
+
+export function loadMagneticPoles(): Promise<MagneticPoles> {
+  if (!magneticPolesPromise) {
+    magneticPolesPromise = fetchJson<MagneticPoles>("/data/magnetic-poles.json");
+  }
+  return magneticPolesPromise;
 }

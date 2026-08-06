@@ -3,7 +3,7 @@
 import { useGlobeStore } from "@/store/globeStore";
 import { formatRelative, magnitudeColor, alertColor, rgbCss } from "@/lib/utils";
 import type { Quake } from "@/lib/usgs";
-import type { SelectedFeature } from "@/lib/features";
+import type { SelectedFeature, PoleInfo } from "@/lib/features";
 import {
   X,
   ExternalLink,
@@ -11,6 +11,8 @@ import {
   Clock,
   ChevronLeft,
   Flame,
+  Compass,
+  Orbit,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -30,8 +32,10 @@ export function DetailPanel() {
     <div className="pointer-events-auto fixed inset-x-3 bottom-3 z-20 mx-auto flex max-h-[72vh] max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-ink-900/95 shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:bottom-6 sm:left-6 sm:max-w-sm">
       {selectedSwarm ? (
         <SwarmDetail />
-      ) : selectedFeature ? (
+      ) : selectedFeature?.kind === "volcano" ? (
         <FeatureDetail feature={selectedFeature} />
+      ) : selectedFeature?.kind === "pole" ? (
+        <PoleDetail pole={selectedFeature.data} />
       ) : selected ? (
         <QuakeDetail quake={selected} />
       ) : null}
@@ -39,7 +43,7 @@ export function DetailPanel() {
   );
 }
 
-function FeatureDetail({ feature }: { feature: SelectedFeature }) {
+function FeatureDetail({ feature }: { feature: Extract<SelectedFeature, { kind: "volcano" }> }) {
   const clear = useGlobeStore((s) => s.setSelectedFeature);
   const volcano = feature.data;
 
@@ -70,6 +74,59 @@ function FeatureDetail({ feature }: { feature: SelectedFeature }) {
         <Stat label="Lat" value={volcano.lat.toFixed(2)} />
         <Stat label="Lon" value={volcano.lon.toFixed(2)} />
       </div>
+    </div>
+  );
+}
+
+function PoleDetail({ pole }: { pole: PoleInfo }) {
+  const clear = useGlobeStore((s) => s.setSelectedFeature);
+  const isDip = pole.kind === "dip";
+  const Icon = isDip ? Compass : Orbit;
+  const tagColor = isDip ? "text-accent-cyan/80" : "text-[#c9a6ff]";
+
+  return (
+    <div className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className={`inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.25em] ${tagColor}`}>
+            <Icon className="h-3 w-3" />
+            {isDip ? "Magnetic pole" : "Geomagnetic pole"}
+          </div>
+          <h2 className="mt-1 truncate text-lg font-semibold">{pole.label}</h2>
+          <div className="mt-0.5 truncate text-sm text-white/70">
+            {isDip
+              ? "Where a compass needle points straight down"
+              : "Pole of the idealized dipole model of Earth's field"}
+          </div>
+        </div>
+        <button
+          onClick={() => clear(null)}
+          aria-label="Close"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-full hover:bg-white/10"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
+        <Stat label="Lat" value={pole.lat.toFixed(2)} />
+        <Stat label="Lon" value={pole.lon.toFixed(2)} />
+        <Stat label="As of" value={String(pole.year)} />
+        <Stat
+          label="Status"
+          value={pole.predicted ? "Predicted" : "Measured"}
+          color={pole.predicted ? "rgb(250, 204, 21)" : undefined}
+        />
+        <Stat label="From true pole" value={`${Math.round(pole.distanceFromGeographicPoleKm).toLocaleString()} km`} />
+      </div>
+
+      {pole.predicted && (
+        <div className="mt-3 text-[11px] leading-relaxed text-white/50">
+          The World Magnetic Model only fits measured surveys through 2020 —
+          positions from 2025 onward are the model's forecast, not a direct
+          measurement.
+        </div>
+      )}
     </div>
   );
 }
