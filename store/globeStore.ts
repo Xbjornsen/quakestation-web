@@ -31,6 +31,7 @@ interface GlobeState {
   depthMax: number;
   showPlates: boolean;
   showVolcanoes: boolean;
+  showGeomagneticPoles: boolean;
   // Swarm towers (the radial event stacks). Independent of loose markers.
   showSwarms: boolean;
   autoRotate: boolean;
@@ -55,7 +56,9 @@ interface GlobeState {
   setLabelMinMag: (m: number) => void;
   setDepthRange: (min: number, max: number) => void;
   setAutoRotateSpeed: (n: number) => void;
-  toggle: (key: "showPlates" | "showVolcanoes" | "showSwarms" | "autoRotate") => void;
+  toggle: (
+    key: "showPlates" | "showVolcanoes" | "showGeomagneticPoles" | "showSwarms" | "autoRotate",
+  ) => void;
   setColorMode: (m: MarkerColorMode) => void;
   setSettingsOpen: (b: boolean) => void;
   setReplayTime: (t: number | null) => void;
@@ -88,6 +91,7 @@ export const useGlobeStore = create<GlobeState>()(
   depthMax: DEPTH_MAX,
   showPlates: false,
   showVolcanoes: false,
+  showGeomagneticPoles: false,
   showSwarms: true,
   autoRotate: false,
   autoRotateSpeed: 0.35,
@@ -174,6 +178,7 @@ export const useGlobeStore = create<GlobeState>()(
         depthMax: s.depthMax,
         showPlates: s.showPlates,
         showVolcanoes: s.showVolcanoes,
+        showGeomagneticPoles: s.showGeomagneticPoles,
         showSwarms: s.showSwarms,
         autoRotate: s.autoRotate,
         autoRotateSpeed: s.autoRotateSpeed,

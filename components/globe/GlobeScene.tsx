@@ -11,6 +11,7 @@ import { SwarmSpines } from "./SwarmSpines";
 import { Plates } from "./Plates";
 import { Volcanoes } from "./Volcanoes";
 import { PoleMarkers } from "./PoleMarkers";
+import { GeomagneticPoles } from "./GeomagneticPoles";
 import { CameraController } from "./CameraController";
 import { useMemo } from "react";
 import { detectSwarms, type Swarm } from "@/lib/swarm";
@@ -44,6 +45,7 @@ export default function GlobeScene() {
   const setSwarmCount = useGlobeStore((s) => s.setSwarmCount);
   const showPlates = useGlobeStore((s) => s.showPlates);
   const showVolcanoes = useGlobeStore((s) => s.showVolcanoes);
+  const showGeomagneticPoles = useGlobeStore((s) => s.showGeomagneticPoles);
   const showSwarms = useGlobeStore((s) => s.showSwarms);
   const depthMin = useGlobeStore((s) => s.depthMin);
   const depthMax = useGlobeStore((s) => s.depthMax);
@@ -113,6 +115,7 @@ export default function GlobeScene() {
       <Atmosphere />
       {showPlates && <Plates />}
       {showVolcanoes && <Volcanoes />}
+      {showGeomagneticPoles && <GeomagneticPoles />}
       <Markers quakes={markerQuakes} />
       <SwarmSpines swarms={spineSwarms} />
       <PoleMarkers />
