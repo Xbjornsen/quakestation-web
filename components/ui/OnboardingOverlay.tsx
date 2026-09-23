@@ -7,7 +7,7 @@ const DISMISSED_KEY = "quakestation-onboarding-dismissed";
 
 const ITEMS: Array<{ icon: React.ReactNode; text: React.ReactNode }> = [
   {
-    icon: <span className="h-4 w-4 shrink-0 rounded-full border-2 border-accent-amber" />,
+    icon: <span className="block h-4 w-4 shrink-0 rounded-full border-2 border-accent-amber" />,
     text: "Rings mark earthquakes — colour and size scale with magnitude.",
   },
   {
@@ -63,7 +63,7 @@ export function OnboardingOverlay() {
         <ul className="mt-4 flex flex-col gap-3">
           {ITEMS.map((item, i) => (
             <li key={i} className="flex items-start gap-3 text-sm text-white/75">
-              <span className="mt-0.5">{item.icon}</span>
+              <span className="mt-0.5 flex">{item.icon}</span>
               <span>{item.text}</span>
             </li>
           ))}

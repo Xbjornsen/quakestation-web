@@ -13,14 +13,14 @@ export function HeaderStats() {
   const { data: volcanoes } = useVolcanoes(showVolcanoes);
 
   return (
-    <div className="flex items-center gap-2 text-[11px] text-white/45">
+    <div className="flex items-center gap-2 text-[11px] text-white/60">
       <span>
-        <span className="font-mono text-white/70">{quakeCount.toLocaleString()}</span> quakes
+        <span className="font-mono text-white/85">{quakeCount.toLocaleString()}</span> quakes
       </span>
       {swarmCount > 0 ? (
         <>
           <span className="text-white/25">·</span>
-          <span className="text-accent-amber/80">
+          <span className="text-accent-amber">
             <span className="font-mono">{swarmCount}</span> swarms
           </span>
         </>

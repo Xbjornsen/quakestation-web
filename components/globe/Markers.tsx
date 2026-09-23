@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { Quake } from "@/lib/usgs";
 import { latLonToVec3, facingOpacity } from "@/lib/geo";
-import { magnitudeColor, rgbCss } from "@/lib/utils";
+import { markerColor, rgbCss } from "@/lib/utils";
 import { useGlobeStore } from "@/store/globeStore";
 import { ringVertex, ringFragment, discRadius } from "./shaders/ring";
 
@@ -39,6 +39,7 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
   const matRef = useRef<THREE.ShaderMaterial>(null);
   const focusQuake = useGlobeStore((s) => s.focusQuake);
   const labelMinMag = useGlobeStore((s) => s.labelMinMag);
+  const colorMode = useGlobeStore((s) => s.colorMode);
 
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry();
@@ -63,7 +64,7 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
       v.crossVectors(nrm, u).normalize();
       const h = discRadius(q.mag);
       const phase = stablePhase(q.id);
-      const [cr, cg, cb] = magnitudeColor(q.mag);
+      const [cr, cg, cb] = markerColor(q, colorMode);
       CORNERS.forEach(([su, sv, tu, tv], c) => {
         const idx = i * 4 + c;
         positions[idx * 3] = pos.x + u.x * su * h + v.x * sv * h;
@@ -91,7 +92,7 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
     g.setIndex(new THREE.BufferAttribute(indices, 1));
     g.computeBoundingSphere();
     return g;
-  }, [quakes]);
+  }, [quakes, colorMode]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
 
@@ -105,11 +106,12 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
           return {
             id: q.id,
             mag: q.mag,
+            color: rgbCss(markerColor(q, colorMode)),
             dir,
             position: dir.clone().multiplyScalar(1.01).toArray() as [number, number, number],
           };
         }),
-    [quakes, labelMinMag],
+    [quakes, labelMinMag, colorMode],
   );
   const labelRefs = useRef(new Map<string, HTMLDivElement>());
   const _labelPos = useRef(new THREE.Vector3());
@@ -164,7 +166,7 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
               else labelRefs.current.delete(l.id);
             }}
             className="pointer-events-none -translate-y-3 select-none whitespace-nowrap rounded-full border border-white/15 bg-ink-900/75 px-1.5 py-0.5 font-mono text-[10px] font-semibold backdrop-blur-sm"
-            style={{ color: rgbCss(magnitudeColor(l.mag)) }}
+            style={{ color: l.color }}
           >
             M{l.mag.toFixed(1)}
           </div>
