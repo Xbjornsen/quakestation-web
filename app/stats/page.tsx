@@ -205,7 +205,7 @@ export default function StatsPage() {
           <div className="flex flex-col gap-2">
             <Link
               href="/"
-              className="inline-flex w-fit items-center gap-1.5 text-[11px] uppercase tracking-[0.25em] text-white/45 transition-colors hover:text-accent-cyan"
+              className="inline-flex w-fit items-center gap-1.5 text-[11px] uppercase tracking-[0.25em] text-white/55 transition-colors hover:text-accent-cyan"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               Back to globe
@@ -213,7 +213,7 @@ export default function StatsPage() {
             <h1 className="font-display text-2xl font-semibold tracking-tight sm:text-3xl">
               Seismic Statistics
             </h1>
-            <p className="text-sm text-white/45">
+            <p className="text-sm text-white/55">
               Over the last{" "}
               {days === 365 ? (
                 <span className="font-mono text-white/70">year</span>
@@ -228,7 +228,7 @@ export default function StatsPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-[10px] uppercase tracking-[0.25em] text-white/40">
+            <span className="text-[10px] uppercase tracking-[0.25em] text-white/55">
               Window
             </span>
             <div className="flex gap-1.5">
@@ -256,7 +256,11 @@ export default function StatsPage() {
             </p>
           </Panel>
         ) : isLoading ? (
-          <div className="grid place-items-center py-24 text-white/50">
+          // Tall enough that the page scrolls from first paint, like the
+          // loaded view: otherwise the scrollbar appears when data lands,
+          // the centred column jumps sideways and the footer jumps down
+          // (Lighthouse desktop scored this as a 0.87 layout shift).
+          <div className="grid min-h-[100dvh] place-items-start justify-center pt-24 text-white/50">
             <div className="flex flex-col items-center gap-3">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
               <span className="text-xs uppercase tracking-[0.3em]">Loading stats</span>
@@ -388,7 +392,7 @@ export default function StatsPage() {
           </div>
         ) : null}
 
-        <footer className="mt-10 border-t border-white/10 pt-5 text-[11px] leading-relaxed text-white/40">
+        <footer className="mt-10 border-t border-white/10 pt-5 text-[11px] leading-relaxed text-white/55">
           Earthquake data from the free, public{" "}
           <a
             href="https://earthquake.usgs.gov/fdsnws/event/1/"
@@ -415,7 +419,7 @@ function Panel({
   return (
     <div className="rounded-2xl border border-white/10 bg-ink-900/60 p-5 backdrop-blur-md">
       {title ? (
-        <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.25em] text-white/45">
+        <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.25em] text-white/55">
           {title}
         </h2>
       ) : null}
@@ -445,7 +449,7 @@ function Headline({
         : "text-accent-cyan";
   return (
     <div className="rounded-2xl border border-white/10 bg-ink-900/60 p-4 backdrop-blur-md">
-      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/45">
+      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-white/55">
         <span className={accentColor}>{icon}</span>
         {label}
       </div>
@@ -453,7 +457,7 @@ function Headline({
         {value}
       </div>
       {sub ? (
-        <div className="mt-0.5 truncate text-xs text-white/45">{sub}</div>
+        <div className="mt-0.5 truncate text-xs text-white/55">{sub}</div>
       ) : null}
     </div>
   );
@@ -485,7 +489,7 @@ function MagHistogram({ histogram }: { histogram: number[] }) {
                 </span>
               </div>
             </div>
-            <span className="font-mono text-[10px] text-white/45">M{b.label}</span>
+            <span className="font-mono text-[10px] text-white/55">M{b.label}</span>
           </div>
         );
       })}
@@ -583,7 +587,7 @@ function BarTrend({
                 title={`${d.count} quakes`}
               />
             </div>
-            <span className="h-3 truncate font-mono text-[9px] text-white/40">
+            <span className="h-3 truncate font-mono text-[9px] text-white/55">
               {showLabel ? bucketLabel(i, perDay.length, unit) : ""}
             </span>
           </div>
@@ -718,7 +722,7 @@ function LineTrend({
           }}
         >
           <div className="font-mono text-xs font-semibold text-white/90">{active.count}</div>
-          <div className="text-[10px] text-white/45">
+          <div className="text-[10px] text-white/55">
             {bucketLabel(activeIndex, n, unit) === "now" ? "Now" : bucketLabel(activeIndex, n, unit)}
           </div>
         </div>
@@ -733,7 +737,7 @@ function LineTrend({
           return (
             <span
               key={d.day}
-              className="absolute top-0 whitespace-nowrap font-mono text-[9px] text-white/40"
+              className="absolute top-0 whitespace-nowrap font-mono text-[9px] text-white/55"
               style={{ left: `${pct}%`, transform: `translateX(${shift})` }}
             >
               {bucketLabel(i, n, unit)}
@@ -800,11 +804,11 @@ function DepthChart({
               <div className="flex flex-1 items-baseline justify-between gap-2">
                 <span className="text-sm text-white/80">
                   {r.label}{" "}
-                  <span className="text-xs text-white/35">{r.sub}</span>
+                  <span className="text-xs text-white/55">{r.sub}</span>
                 </span>
                 <span className="font-mono text-sm text-white/70">
                   {r.count.toLocaleString()}
-                  <span className="ml-1.5 text-xs text-white/35">
+                  <span className="ml-1.5 text-xs text-white/55">
                     {pct.toFixed(0)}%
                   </span>
                 </span>
@@ -826,7 +830,7 @@ interface RegionRow {
 
 function TopRegions({ regions }: { regions: RegionRow[] }) {
   if (regions.length === 0) {
-    return <p className="text-sm text-white/40">No data.</p>;
+    return <p className="text-sm text-white/55">No data.</p>;
   }
   const max = Math.max(1, ...regions.map((r) => r.count));
   return (

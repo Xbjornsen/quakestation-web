@@ -37,7 +37,9 @@ export const viewport: Viewport = {
   themeColor: "#05070d",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  // No maximumScale: pinch-zoom must stay available for accessibility. The
+  // globe canvas sets touch-action: none, so pinching the globe still zooms
+  // the globe, not the page.
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
