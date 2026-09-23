@@ -37,6 +37,14 @@ export function depthColor(km: number): [number, number, number] {
   return [0.36, 0.78, 1.0];
 }
 
+// Marker colour for a quake under the user's Settings → Marker colour choice.
+export function markerColor(
+  q: { mag: number; depth: number },
+  mode: "magnitude" | "depth",
+): [number, number, number] {
+  return mode === "depth" ? depthColor(q.depth) : magnitudeColor(q.mag);
+}
+
 // USGS PAGER alert colors — a fixed, well-known palette (not derived from
 // magnitude), so it intentionally doesn't reuse magnitudeColor.
 export function alertColor(level: "green" | "yellow" | "orange" | "red"): [number, number, number] {

@@ -27,13 +27,21 @@ interface Stats {
   m5plus: number;
   magHistogram: number[];
   perDay: Array<{ day: number; count: number }>;
-  // Bucket width in days for `perDay` (1 = daily, 7 = weekly). Long windows
-  // bucket by week so the bar chart doesn't collapse into hundreds of
-  // imperceptibly thin daily bars.
-  perDayBucketDays: number;
+  // Bucket unit for `perDay`. A 1-day window bins by hour (a single daily bar
+  // tells you nothing), long windows bin by week so the chart doesn't collapse
+  // into hundreds of imperceptibly thin daily bars.
+  trendUnit: TrendUnit;
   depth: { shallow: number; intermediate: number; deep: number };
   regions: Array<{ name: string; count: number; lat: number; lon: number }>;
 }
+
+type TrendUnit = "h" | "d" | "w";
+const TREND_BUCKET_MS: Record<TrendUnit, number> = {
+  h: 60 * 60 * 1000,
+  d: 24 * 60 * 60 * 1000,
+  w: 7 * 24 * 60 * 60 * 1000,
+};
+const TREND_UNIT_NAME: Record<TrendUnit, string> = { h: "hour", d: "day", w: "week" };
 
 function regionOf(place: string): string {
   const idx = place.toLowerCase().lastIndexOf(" of ");
@@ -51,12 +59,14 @@ function computeStats(quakes: Quake[], days: number): Stats {
   // once at the end.
   const regionCoords = new Map<string, { sumLat: number; sumLon: number }>();
 
-  // Per-day (or per-week, for long windows) binning, anchored to now so the
-  // last bucket is "today" regardless of clock skew between client and feed.
-  const dayMs = 24 * 60 * 60 * 1000;
+  // Per-hour / per-day / per-week binning, anchored to now so the last
+  // bucket is "now" regardless of clock skew between client and feed.
   const now = Date.now();
-  const perDayBucketDays = days > 60 ? 7 : 1;
-  const buckets = Math.max(1, Math.ceil(days / perDayBucketDays));
+  const trendUnit: TrendUnit = days <= 1 ? "h" : days > 60 ? "w" : "d";
+  const bucketMs = TREND_BUCKET_MS[trendUnit];
+  // Whole buckets only: ceil() would add a leading week that's mostly outside
+  // the window (365d = 52.1w) and draw a fake dip at the start of the chart.
+  const buckets = Math.max(1, Math.floor((days * TREND_BUCKET_MS.d) / bucketMs));
   const perDayCounts = new Array<number>(buckets).fill(0);
 
   for (const q of quakes) {
@@ -84,8 +94,7 @@ function computeStats(quakes: Quake[], days: number): Stats {
       regionCoords.set(region, { sumLat: q.lat, sumLon: q.lon });
     }
 
-    const ageDays = Math.floor((now - q.time) / dayMs);
-    const ageBuckets = Math.floor(ageDays / perDayBucketDays);
+    const ageBuckets = Math.floor(Math.max(0, now - q.time) / bucketMs);
     const idx = buckets - 1 - ageBuckets;
     if (idx >= 0 && idx < buckets) perDayCounts[idx]++;
   }
@@ -107,7 +116,7 @@ function computeStats(quakes: Quake[], days: number): Stats {
     m5plus,
     magHistogram,
     perDay: perDayCounts.map((count, day) => ({ day, count })),
-    perDayBucketDays,
+    trendUnit,
     depth,
     regions,
   };
@@ -290,8 +299,8 @@ export default function StatsPage() {
                 <MagHistogram histogram={stats.magHistogram} />
               </Panel>
 
-              <Panel title={stats.perDayBucketDays >= 7 ? "Quakes per week" : "Quakes per day"}>
-                <TrendChart perDay={stats.perDay} bucketDays={stats.perDayBucketDays} />
+              <Panel title={`Quakes per ${TREND_UNIT_NAME[stats.trendUnit]}`}>
+                <TrendChart perDay={stats.perDay} unit={stats.trendUnit} />
               </Panel>
 
               <Panel title="Depth distribution">
@@ -347,7 +356,7 @@ export default function StatsPage() {
             <h2 className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#ff8a3d]">
               Volcanoes
             </h2>
-            <section className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+            <section className="grid grid-cols-2 gap-3 lg:grid-cols-3 [&>*:last-child]:col-span-2 lg:[&>*:last-child]:col-span-1">
               <Headline
                 icon={<Flame className="h-4 w-4" />}
                 label="Holocene volcanoes"
@@ -453,7 +462,7 @@ function Headline({
 function MagHistogram({ histogram }: { histogram: number[] }) {
   const max = Math.max(1, ...histogram);
   return (
-    <div className="flex h-44 items-stretch gap-2 sm:gap-3">
+    <div className="flex h-44 items-stretch gap-2 pt-5 sm:gap-3">
       {MAG_BUCKETS.map((b, i) => {
         const count = histogram[i];
         const pct = (count / max) * 100;
@@ -510,33 +519,38 @@ function useContainerWidth<T extends HTMLElement>() {
 // time" regardless of density.
 const MIN_BAR_PX = 16;
 
-function bucketLabel(index: number, total: number, unit: "d" | "w"): string {
+function bucketLabel(index: number, total: number, unit: TrendUnit): string {
   const ago = total - 1 - index;
   return ago === 0 ? "now" : `-${ago}${unit}`;
 }
 
 function TrendChart({
   perDay,
-  bucketDays,
+  unit,
 }: {
   perDay: Array<{ day: number; count: number }>;
-  bucketDays: number;
+  unit: TrendUnit;
 }) {
   const [containerRef, width] = useContainerWidth<HTMLDivElement>();
   const n = perDay.length;
-  const unit = bucketDays >= 7 ? "w" : "d";
   // Before the first real measurement (mount), guess from bucket count so
   // there's no flash of bars doomed to be replaced by a line a frame later.
   const useLine = width > 0 ? width / n < MIN_BAR_PX : n > 14;
   const max = Math.max(1, ...perDay.map((d) => d.count));
   // For wide windows labels get crowded; only label a few, based on how
   // many buckets actually render (not the raw day count).
-  const labelEvery = n > 40 ? 4 : n > 14 ? 2 : 1;
+  // Hourly buckets label every 6h (-18h, -12h, -6h, now) so the axis reads
+  // as quarter-days rather than a wall of cramped numbers.
+  const labelEvery = unit === "h" ? 6 : n > 40 ? 4 : n > 14 ? 2 : 1;
+  // The line form is used precisely when space is tight, so also cap its
+  // label count by the measured width (~56px per label).
+  const maxLabels = Math.max(2, Math.floor((width || 300) / 56));
+  const lineLabelEvery = Math.max(labelEvery, Math.ceil((n - 1) / (maxLabels - 1)));
 
   return (
     <div ref={containerRef} className="min-w-0">
       {useLine ? (
-        <LineTrend perDay={perDay} max={max} unit={unit} labelEvery={labelEvery} />
+        <LineTrend perDay={perDay} max={max} unit={unit} labelEvery={lineLabelEvery} />
       ) : (
         <BarTrend perDay={perDay} max={max} unit={unit} labelEvery={labelEvery} />
       )}
@@ -552,7 +566,7 @@ function BarTrend({
 }: {
   perDay: Array<{ day: number; count: number }>;
   max: number;
-  unit: "d" | "w";
+  unit: TrendUnit;
   labelEvery: number;
 }) {
   return (
@@ -592,7 +606,7 @@ function LineTrend({
 }: {
   perDay: Array<{ day: number; count: number }>;
   max: number;
-  unit: "d" | "w";
+  unit: TrendUnit;
   labelEvery: number;
 }) {
   const n = perDay.length;
@@ -709,12 +723,23 @@ function LineTrend({
           </div>
         </div>
       </div>
-      <div className="flex">
-        {perDay.map((d, i) => (
-          <span key={d.day} className="h-3 flex-1 truncate text-center font-mono text-[9px] text-white/40">
-            {i % labelEvery === 0 ? bucketLabel(i, n, unit) : ""}
-          </span>
-        ))}
+      {/* Labels sit at each point's x position (not in equal-width slots),
+          so dense hourly/daily axes don't truncate to "-…" on narrow cards. */}
+      <div className="relative h-3">
+        {perDay.map((d, i) => {
+          if ((n - 1 - i) % labelEvery !== 0) return null;
+          const pct = n === 1 ? 50 : (i / (n - 1)) * 100;
+          const shift = i === 0 ? "0%" : i === n - 1 ? "-100%" : "-50%";
+          return (
+            <span
+              key={d.day}
+              className="absolute top-0 whitespace-nowrap font-mono text-[9px] text-white/40"
+              style={{ left: `${pct}%`, transform: `translateX(${shift})` }}
+            >
+              {bucketLabel(i, n, unit)}
+            </span>
+          );
+        })}
       </div>
     </div>
   );
@@ -806,7 +831,10 @@ function TopRegions({ regions }: { regions: RegionRow[] }) {
   const max = Math.max(1, ...regions.map((r) => r.count));
   return (
     <div className="flex flex-col gap-2.5">
-      {regions.map((r) => {
+      {regions.map((r, i) => {
+        // Names aren't unique (two swarms can share a region), so key by
+        // position too.
+        const key = `${i}-${r.name}`;
         const bar = (
           <div className="relative h-5 flex-1 overflow-hidden rounded-md bg-white/5">
             <div
@@ -829,7 +857,7 @@ function TopRegions({ regions }: { regions: RegionRow[] }) {
         if (r.lat != null && r.lon != null) {
           return (
             <Link
-              key={r.name}
+              key={key}
               href={`/?lat=${r.lat.toFixed(2)}&lon=${r.lon.toFixed(2)}`}
               className="group flex items-center gap-3 rounded-md transition-colors hover:bg-white/5"
               title={`Fly to ${r.name} on the globe`}
@@ -841,7 +869,7 @@ function TopRegions({ regions }: { regions: RegionRow[] }) {
           );
         }
         return (
-          <div key={r.name} className="flex items-center gap-3">
+          <div key={key} className="flex items-center gap-3">
             {nameLabel}
             {bar}
             {countLabel}

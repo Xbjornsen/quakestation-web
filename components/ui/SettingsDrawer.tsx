@@ -3,11 +3,31 @@
 import { useGlobeStore, DEPTH_MIN, DEPTH_MAX } from "@/store/globeStore";
 import { GLOBE_TIME_WINDOWS } from "@/lib/usgs";
 import { X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 export function SettingsDrawer() {
   const s = useGlobeStore();
+  const setSettingsOpen = s.setSettingsOpen;
 
-  return (
+  // Portal target is only available client-side.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSettingsOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [setSettingsOpen]);
+
+  if (!mounted) return null;
+
+  // Rendered into <body> so the drawer escapes the header overlay's z-10
+  // stacking context — otherwise the Replay bar (a later z-10 sibling)
+  // paints on top of the drawer on narrow screens.
+  return createPortal(
     <>
       {/* Transparent scrim — clicking the globe (or anywhere outside the
           drawer) closes Settings. */}
@@ -16,7 +36,12 @@ export function SettingsDrawer() {
         onClick={() => s.setSettingsOpen(false)}
         aria-hidden
       />
-      <div className="pointer-events-auto fixed inset-y-0 right-0 z-30 flex w-full max-w-sm flex-col border-l border-white/10 bg-ink-900/95 backdrop-blur-xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Settings"
+        className="pointer-events-auto fixed inset-y-0 right-0 z-30 flex w-full max-w-sm flex-col border-l border-white/10 bg-ink-900/95 backdrop-blur-xl"
+      >
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
         <h2 className="text-sm font-semibold uppercase tracking-[0.3em]">Settings</h2>
         <button
@@ -36,6 +61,7 @@ export function SettingsDrawer() {
             step={0.5}
             value={s.minMagnitude}
             onChange={(e) => s.setMinMagnitude(Number(e.target.value))}
+            aria-label="Minimum magnitude"
             className="w-full accent-accent-cyan"
           />
           <div className="mt-1 font-mono text-xs text-white/70">
@@ -51,6 +77,7 @@ export function SettingsDrawer() {
             step={0.5}
             value={s.labelMinMag}
             onChange={(e) => s.setLabelMinMag(Number(e.target.value))}
+            aria-label="Minimum magnitude to label"
             className="w-full accent-accent-cyan"
           />
           <div className="mt-1 font-mono text-xs text-white/70">
@@ -187,7 +214,8 @@ export function SettingsDrawer() {
         </div>
       </div>
     </div>
-    </>
+    </>,
+    document.body,
   );
 }
 

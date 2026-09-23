@@ -37,7 +37,7 @@ export function LiveIndicator() {
       : `Live · ${ago(dataUpdatedAt)}`;
 
   return (
-    <div className="flex items-center gap-1.5 text-[11px] text-white/45">
+    <div className="flex items-center gap-1.5 text-[11px] text-white/60">
       <span className="relative flex h-1.5 w-1.5">
         {!offline && !isFetching ? (
           <span

@@ -167,6 +167,7 @@ export function ReplayBar() {
                 setReplayPlaying(false);
                 setReplayTime(Number(e.target.value));
               }}
+              aria-label="Replay position"
               className="w-full accent-accent-cyan"
             />
             <div className="font-mono text-[10px] text-white/70">{fmt(head)}</div>

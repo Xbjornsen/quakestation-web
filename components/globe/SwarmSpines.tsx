@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { Swarm } from "@/lib/swarm";
 import { latLonToVec3, facingOpacity } from "@/lib/geo";
-import { magnitudeColor, rgbCss } from "@/lib/utils";
+import { magnitudeColor, markerColor, rgbCss } from "@/lib/utils";
 import { useGlobeStore } from "@/store/globeStore";
 import { ringVertex, ringFragment } from "./shaders/ring";
 
@@ -64,6 +64,7 @@ export function SwarmSpines({ swarms }: { swarms: Swarm[] }) {
   const stemRef = useRef<THREE.LineSegments>(null);
   const hitRef = useRef<THREE.InstancedMesh>(null);
   const focusSwarm = useGlobeStore((s) => s.focusSwarm);
+  const colorMode = useGlobeStore((s) => s.colorMode);
   const { gl } = useThree();
 
   const { entries, towerHeights, labels } = useMemo(() => {
@@ -84,7 +85,7 @@ export function SwarmSpines({ swarms }: { swarms: Swarm[] }) {
           swarmIndex: si,
           pos: dir.clone().multiplyScalar(radius),
           mag: q.mag,
-          color: magnitudeColor(q.mag),
+          color: markerColor(q, colorMode),
         });
       });
       const height = STACK_BASE + (ordered.length - 1) * STACK_STEP;
@@ -100,7 +101,7 @@ export function SwarmSpines({ swarms }: { swarms: Swarm[] }) {
       });
     });
     return { entries, towerHeights, labels };
-  }, [swarms]);
+  }, [swarms, colorMode]);
 
   // Baked quads: one per event, each lying in the plane perpendicular to its
   // radial (tower) axis. The ripple is drawn in the quad's UV space.
