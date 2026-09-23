@@ -55,7 +55,7 @@ export function HeaderPills() {
 
   if (!latest || !biggest) {
     return (
-      <div className="flex flex-wrap gap-2">
+      <div className="pointer-events-auto flex flex-wrap gap-2 self-start">
         <Pill label="LATEST" value="…" sub="loading" />
         <Pill label="BIGGEST" value="…" sub="loading" />
       </div>
@@ -63,7 +63,13 @@ export function HeaderPills() {
   }
 
   return (
-    <div ref={containerRef} className="flex flex-wrap gap-2">
+    // `relative` here + `sm:relative` on each pill: on phones the dropdown
+    // anchors to the row's left edge (so the right-hand pill's list doesn't
+    // run off-screen); from sm up it anchors under its own pill.
+    <div
+      ref={containerRef}
+      className="pointer-events-auto relative flex flex-wrap gap-2 self-start"
+    >
       <Pill
         label="LATEST"
         value={`M${latest.mag.toFixed(1)}`}
@@ -77,6 +83,9 @@ export function HeaderPills() {
         label="BIGGEST"
         value={`M${biggest.mag.toFixed(1)}`}
         sub={biggest.place.split(" of ").at(-1) ?? biggest.place}
+        // Place name is in the dropdown; on phones dropping it here keeps
+        // both pills on one row.
+        subClassName="hidden sm:inline"
         accent
         isOpen={open === "biggest"}
         onClick={() => setOpen(open === "biggest" ? null : "biggest")}
@@ -91,6 +100,7 @@ function Pill({
   label,
   value,
   sub,
+  subClassName = "",
   accent,
   isOpen,
   onClick,
@@ -99,13 +109,14 @@ function Pill({
   label: string;
   value: string;
   sub: string;
+  subClassName?: string;
   accent?: boolean;
   isOpen?: boolean;
   onClick?: () => void;
   children?: React.ReactNode;
 }) {
   return (
-    <div className="relative">
+    <div className="sm:relative">
       <button
         onClick={onClick}
         disabled={!onClick}
@@ -117,11 +128,13 @@ function Pill({
         } ${isOpen ? "ring-1 ring-white/30" : ""}`}
       >
         <div className="flex items-baseline gap-2">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/60 sm:tracking-[0.18em]">
             {label}
           </span>
           <span className="font-mono text-sm font-semibold">{value}</span>
-          <span className="max-w-[14ch] truncate text-[11px] text-white/60">{sub}</span>
+          <span className={`max-w-[14ch] truncate text-[11px] text-white/60 ${subClassName}`}>
+            {sub}
+          </span>
         </div>
       </button>
       {isOpen ? children : null}
@@ -141,7 +154,7 @@ function PillDropdown({
   return (
     <div
       role="listbox"
-      className="absolute left-0 top-full z-30 mt-2 max-h-80 w-72 overflow-y-auto rounded-xl border border-white/10 bg-ink-900/95 p-2 shadow-2xl backdrop-blur-xl"
+      className="absolute left-0 top-full z-30 mt-2 max-h-80 w-[min(18rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-white/10 bg-ink-900/95 p-2 shadow-2xl backdrop-blur-xl"
     >
       <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">
         {title}

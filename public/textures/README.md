@@ -1,15 +1,19 @@
 # Earth textures
 
-Drop the following NASA Visible Earth textures here for the photoreal globe.
-Without them, the app falls back to a procedural sphere so dev still works.
+NASA Visible Earth textures for the photoreal globe. `Earth.tsx` picks a set at
+load time; without any of them the app falls back to a flat sphere so dev
+still works.
 
-- `earth_day_4k.jpg` — Blue Marble Next Generation, 4096 × 2048
-- `earth_night_4k.jpg` — Black Marble (city lights), 4096 × 2048
-- `earth_spec_2k.jpg` — land/ocean specular mask (white land, black ocean), 2048 × 1024
+| File | Size | Served to |
+| --- | --- | --- |
+| `earth_day.jpg` / `earth_night.jpg` | 8192 × 4096 (~7.7 MB total) | Screens ≥ 1024px wide whose GPU supports 8K textures, unless Save-Data is on |
+| `earth_day_4k.jpg` / `earth_night_4k.jpg` | 4096 × 2048 (~1.2 MB total) | Everyone else (phones, tablets, low-end GPUs) |
+| `earth_spec.jpg` | 2048 × 1024 | Always — land/ocean mask (white land, black ocean) |
+| `earth_normal.jpg` | 2048 × 1024 | Currently unused |
 
-Suggested sources:
+The 4K files are downscaled from the 8K originals (Lanczos, JPEG q85,
+progressive). Regenerate them if the 8K sources change.
+
+Sources:
 - https://visibleearth.nasa.gov/collection/1484/blue-marble
 - https://earthobservatory.nasa.gov/features/NightLights
-
-8K variants will live in `8k/` and be served conditionally based on devicePixelRatio
-and effective connection type once M2 lands.

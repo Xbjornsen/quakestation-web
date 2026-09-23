@@ -1,21 +1,37 @@
 "use client";
 
 import { useFrame, useLoader, useThree } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { earthFragment, earthVertex } from "./shaders/earth";
 import { sunDirection } from "@/lib/geo";
 
-const DAY = "/textures/earth_day.jpg";
-const NIGHT = "/textures/earth_night.jpg";
 const SPEC = "/textures/earth_spec.jpg";
+
+// The 8K day/night maps are ~7.7 MB together and 8192px wide — larger than
+// many phones' GL_MAX_TEXTURE_SIZE (often 4096), where three.js would decode
+// the full image and then downscale it on the CPU anyway. Pick the 4K set
+// (~1/4 the pixels) unless the GPU supports 8K *and* the screen is big enough
+// to show the difference *and* the user hasn't asked to save data.
+function pickTextureSet(maxTextureSize: number): { day: string; night: string } {
+  const saveData =
+    (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData ===
+    true;
+  const bigScreen = window.matchMedia("(min-width: 1024px)").matches;
+  const hiRes = maxTextureSize >= 8192 && bigScreen && !saveData;
+  return hiRes
+    ? { day: "/textures/earth_day.jpg", night: "/textures/earth_night.jpg" }
+    : { day: "/textures/earth_day_4k.jpg", night: "/textures/earth_night_4k.jpg" };
+}
 
 export function Earth({ segments = 512 }: { segments?: number }) {
   const matRef = useRef<THREE.ShaderMaterial>(null);
   const { gl } = useThree();
   const maxAniso = gl.capabilities.getMaxAnisotropy();
 
-  const [dayMap, nightMap, specMap] = useLoader(THREE.TextureLoader, [DAY, NIGHT, SPEC]);
+  // Decided once per mount; useLoader caches by URL so this must be stable.
+  const [{ day, night }] = useState(() => pickTextureSet(gl.capabilities.maxTextureSize));
+  const [dayMap, nightMap, specMap] = useLoader(THREE.TextureLoader, [day, night, SPEC]);
   dayMap.colorSpace = THREE.SRGBColorSpace;
   nightMap.colorSpace = THREE.SRGBColorSpace;
   specMap.colorSpace = THREE.NoColorSpace;
