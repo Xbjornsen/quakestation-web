@@ -4,18 +4,20 @@ import { useGlobeStore } from "@/store/globeStore";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { depthColor, rgbCss } from "@/lib/utils";
 
-const MAG_STOPS: Array<{ label: string; color: string }> = [
-  { label: "M2", color: "rgb(92,236,255)" },
-  { label: "M3", color: "rgb(140,235,148)" },
-  { label: "M4", color: "rgb(255,237,107)" },
-  { label: "M5", color: "rgb(255,181,71)" },
-  { label: "M6", color: "rgb(255,115,64)" },
-  { label: "M7+", color: "rgb(255,64,89)" },
+// Dot size grows with magnitude, echoing the rings on the globe (whose
+// radius also scales with magnitude), so the key explains both channels.
+const MAG_STOPS: Array<{ label: string; color: string; size?: number }> = [
+  { label: "M2", color: "rgb(92,236,255)", size: 6 },
+  { label: "M3", color: "rgb(140,235,148)", size: 8 },
+  { label: "M4", color: "rgb(255,237,107)", size: 10 },
+  { label: "M5", color: "rgb(255,181,71)", size: 12 },
+  { label: "M6", color: "rgb(255,115,64)", size: 14 },
+  { label: "M7+", color: "rgb(255,64,89)", size: 16 },
 ];
 
 // Mirrors depthColor()'s bands so the key matches the markers when
 // Settings → Marker colour is set to Depth.
-const DEPTH_STOPS: Array<{ label: string; color: string }> = [
+const DEPTH_STOPS: Array<{ label: string; color: string; size?: number }> = [
   { label: "<70", color: rgbCss(depthColor(0)) },
   { label: "70–300", color: rgbCss(depthColor(100)) },
   { label: "300+", color: rgbCss(depthColor(400)) },
@@ -50,7 +52,12 @@ export function Legend() {
       <div className={`flex items-center ${byDepth ? "gap-2.5" : "gap-1"}`}>
         {stops.map((s) => (
           <div key={s.label} className="flex flex-col items-center">
-            <span className="h-3 w-3 rounded-full" style={{ background: s.color }} />
+            <span className="grid h-4 place-items-center">
+              <span
+                className="rounded-full"
+                style={{ background: s.color, width: s.size ?? 12, height: s.size ?? 12 }}
+              />
+            </span>
             <span className="mt-1 font-mono text-[9px] text-white/60">{s.label}</span>
           </div>
         ))}

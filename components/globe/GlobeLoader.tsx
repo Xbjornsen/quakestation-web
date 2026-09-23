@@ -2,6 +2,7 @@
 
 import { useProgress } from "@react-three/drei";
 import { useEffect, useState } from "react";
+import { GlobeLoaderView } from "./GlobeLoaderView";
 
 // Full-bleed placeholder shown over the canvas until the Earth's 8K textures
 // have finished loading. Without it the user stares at the flat fallback
@@ -32,18 +33,5 @@ export function GlobeLoader() {
 
   if (hidden) return null;
 
-  return (
-    <div
-      aria-hidden={done}
-      className={`pointer-events-none absolute inset-0 z-20 grid place-items-center bg-ink-950 transition-opacity duration-700 ${
-        done ? "opacity-0" : "opacity-100"
-      }`}
-    >
-      <div className="flex flex-col items-center gap-3 text-white/60">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
-        <span className="text-xs uppercase tracking-[0.3em]">Loading globe</span>
-        <span className="font-mono text-[10px] text-white/40">{Math.round(progress)}%</span>
-      </div>
-    </div>
-  );
+  return <GlobeLoaderView progress={progress} done={done} />;
 }
