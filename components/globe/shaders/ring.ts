@@ -30,7 +30,10 @@ export const ringFragment = /* glsl */ `
   varying float vPhase;
   varying float vFacing;
   uniform float uTime;
-  float ring(float d, float r, float th) { return exp(-pow((d - r) / th, 2.0)); }
+  // Gaussian falloff around radius r. Square by multiplication, NOT
+  // pow(x, 2.0): GLSL leaves pow() undefined for x < 0, and mobile GPUs
+  // (Adreno/Mali/Apple) return NaN there, which blanked every marker on phones.
+  float ring(float d, float r, float th) { float x = (d - r) / th; return exp(-x * x); }
   void main() {
     vec2 p = vUv - 0.5;
     float d = length(p) * 2.0;       // 0 centre .. 1 edge
