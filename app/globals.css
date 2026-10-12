@@ -15,6 +15,9 @@ body {
 }
 
 body {
+  /* Allow pinch-zoom but not double-tap zoom, so rapid taps on the
+     header pills / replay controls don't zoom the page. */
+  touch-action: manipulation;
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
