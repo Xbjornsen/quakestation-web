@@ -14,6 +14,7 @@ import { DeepLinkSync } from "@/components/ui/DeepLinkSync";
 import { ShareViewSync } from "@/components/ui/ShareViewSync";
 import { OnboardingOverlay } from "@/components/ui/OnboardingOverlay";
 import { GlobeMount } from "@/components/globe/GlobeMount";
+import { GlobeStatus } from "@/components/ui/GlobeStatus";
 import { fetchQuakeById } from "@/lib/usgs";
 
 // A shared ?quake=<id> link gets a relevant title/description for previews.
@@ -47,6 +48,7 @@ export default function Page() {
         <ShareViewSync />
       </Suspense>
       <GlobeMount />
+      <GlobeStatus />
       <div className="pointer-events-none absolute inset-0 z-10 flex flex-col">
         {/* Soft top fade so header text stays legible over busy globe
             regions (dense magnitude labels, swarm towers near the pole)
@@ -60,7 +62,7 @@ export default function Page() {
             pills capture input. */}
         <header className="flex flex-col gap-2.5 p-4 sm:p-6">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex min-w-0 flex-col gap-1">
+            <div data-label-avoid className="flex min-w-0 flex-col gap-1">
               <h1 className="truncate font-display text-sm font-semibold uppercase tracking-[0.3em] text-white/80 sm:tracking-[0.4em]">
                 QuakeStation
               </h1>
@@ -69,7 +71,7 @@ export default function Page() {
                 <LiveIndicator />
               </div>
             </div>
-            <div className="pointer-events-auto flex shrink-0 items-center gap-2">
+            <div data-label-avoid className="pointer-events-auto flex shrink-0 items-center gap-2">
               <Link
                 href="/stats"
                 aria-label="Statistics"

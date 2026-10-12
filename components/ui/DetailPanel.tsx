@@ -29,7 +29,9 @@ export function DetailPanel() {
   if (!selected && !selectedSwarm && !selectedFeature) return null;
 
   return (
-    <div className="pointer-events-auto fixed inset-x-3 bottom-3 z-20 mx-auto flex max-h-[72vh] max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-ink-900/95 shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:bottom-6 sm:left-6 sm:max-w-sm">
+    <div
+      data-label-avoid
+      className="pointer-events-auto fixed inset-x-3 bottom-3 z-20 mx-auto flex max-h-[72vh] max-w-md flex-col overflow-hidden rounded-2xl border border-white/10 bg-ink-900/95 shadow-2xl backdrop-blur-xl sm:inset-x-auto sm:bottom-6 sm:left-6 sm:max-w-sm">
       {selectedSwarm ? (
         <SwarmDetail />
       ) : selectedFeature?.kind === "volcano" ? (

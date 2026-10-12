@@ -1,8 +1,8 @@
 "use client";
 
-import { useGlobeStore, DEPTH_MIN, DEPTH_MAX } from "@/store/globeStore";
+import { useGlobeStore, DEPTH_MIN, DEPTH_MAX, prefsChanged } from "@/store/globeStore";
 import { GLOBE_TIME_WINDOWS } from "@/lib/usgs";
-import { X } from "lucide-react";
+import { RotateCcw, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -199,6 +199,16 @@ export function SettingsDrawer() {
             </div>
           )}
         </Section>
+
+        <button
+          type="button"
+          onClick={s.resetPrefs}
+          disabled={!prefsChanged(s)}
+          className="mb-6 inline-flex w-full items-center justify-center gap-2 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-xs text-white/75 transition-colors hover:bg-white/10 disabled:cursor-default disabled:opacity-40 disabled:hover:bg-white/5"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Reset to defaults
+        </button>
 
         <div className="mt-2 border-t border-white/10 pt-4 text-[11px] leading-relaxed text-white/40">
           Earthquake data from the free, public{" "}

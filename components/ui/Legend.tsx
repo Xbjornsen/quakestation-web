@@ -44,6 +44,7 @@ export function Legend() {
 
   return (
     <div
+      data-label-avoid
       className={`pointer-events-auto mx-4 self-end rounded-xl border border-white/10 bg-ink-900/80 px-3 py-2 text-xs backdrop-blur-md sm:mx-6 ${lift}`}
     >
       <div className="mb-1.5 text-[10px] uppercase tracking-[0.25em] text-white/50">

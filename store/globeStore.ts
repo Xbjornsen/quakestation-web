@@ -65,6 +65,10 @@ interface GlobeState {
   setReplayPlaying: (b: boolean) => void;
   flyTo: (lat: number, lon: number) => void;
   clearFlyTo: () => void;
+  // Restore just the data filters (magnitude floor, time window, depth band).
+  resetFilters: () => void;
+  // Restore every persisted view preference to its default.
+  resetPrefs: () => void;
   focusQuake: (q: Quake) => void;
   focusSwarm: (s: Swarm) => void;
   focusFeature: (f: SelectedFeature) => void;
@@ -76,14 +80,10 @@ interface GlobeState {
 export const DEPTH_MIN = 0;
 export const DEPTH_MAX = 700;
 
-export const useGlobeStore = create<GlobeState>()(
-  persist(
-    (set) => ({
-  quakes: [],
-  selected: null,
-  selectedSwarm: null,
-  selectedFeature: null,
-  swarmReturn: null,
+// Defaults for every persisted view preference. Also the target of the
+// "Reset" actions, so a returning visitor whose saved filters hide everything
+// can get back to a populated globe in one tap.
+export const DEFAULT_PREFS = {
   minMagnitude: 2.5,
   days: 1,
   labelMinMag: 4,
@@ -95,7 +95,37 @@ export const useGlobeStore = create<GlobeState>()(
   showSwarms: true,
   autoRotate: false,
   autoRotateSpeed: 0.35,
-  colorMode: "magnitude",
+  colorMode: "magnitude" as MarkerColorMode,
+};
+
+export type GlobePrefs = typeof DEFAULT_PREFS;
+
+// True when the data filters differ from their defaults.
+export function filtersChanged(s: Pick<GlobePrefs, "minMagnitude" | "days" | "depthMin" | "depthMax">) {
+  return (
+    s.minMagnitude !== DEFAULT_PREFS.minMagnitude ||
+    s.days !== DEFAULT_PREFS.days ||
+    s.depthMin !== DEFAULT_PREFS.depthMin ||
+    s.depthMax !== DEFAULT_PREFS.depthMax
+  );
+}
+
+// True when any persisted preference differs from its default.
+export function prefsChanged(s: GlobePrefs) {
+  return (Object.keys(DEFAULT_PREFS) as Array<keyof GlobePrefs>).some(
+    (k) => s[k] !== DEFAULT_PREFS[k],
+  );
+}
+
+export const useGlobeStore = create<GlobeState>()(
+  persist(
+    (set) => ({
+  quakes: [],
+  selected: null,
+  selectedSwarm: null,
+  selectedFeature: null,
+  swarmReturn: null,
+  ...DEFAULT_PREFS,
   settingsOpen: false,
   swarmCount: 0,
   flyToTarget: null,
@@ -127,6 +157,14 @@ export const useGlobeStore = create<GlobeState>()(
   setReplayPlaying: (replayPlaying) => set({ replayPlaying }),
   flyTo: (lat, lon) => set({ flyToTarget: { lat, lon } }),
   clearFlyTo: () => set({ flyToTarget: null }),
+  resetFilters: () =>
+    set({
+      minMagnitude: DEFAULT_PREFS.minMagnitude,
+      days: DEFAULT_PREFS.days,
+      depthMin: DEFAULT_PREFS.depthMin,
+      depthMax: DEFAULT_PREFS.depthMax,
+    }),
+  resetPrefs: () => set({ ...DEFAULT_PREFS }),
   // Selecting a single quake (e.g. clicking a marker) clears any swarm
   // context so the panel shows a plain detail view with no back link.
   focusQuake: (q) =>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useGlobeStore } from "@/store/globeStore";
 import { useQuakes } from "@/hooks/useQuakes";
+import { GLOBE_MAX_DAYS } from "@/lib/usgs";
 
 // Small status chip making the 60s auto-refresh visible: a pulsing dot plus
 // how long ago the feed last updated. Re-reads the same React Query cache
@@ -18,7 +19,8 @@ function ago(ts: number): string {
 
 export function LiveIndicator() {
   const minMagnitude = useGlobeStore((s) => s.minMagnitude);
-  const days = useGlobeStore((s) => s.days);
+  // Same clamp as GlobeScene so both read one React Query cache entry.
+  const days = Math.min(useGlobeStore((s) => s.days), GLOBE_MAX_DAYS);
   const { dataUpdatedAt, isFetching, isError } = useQuakes({ minMagnitude, days });
 
   // Tick every 10s so the relative label stays fresh between refetches.
