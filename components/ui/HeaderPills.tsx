@@ -55,7 +55,7 @@ export function HeaderPills() {
 
   if (!latest || !biggest) {
     return (
-      <div className="pointer-events-auto flex flex-wrap gap-2 self-start">
+      <div data-label-avoid className="pointer-events-auto flex flex-wrap gap-2 self-start">
         <Pill label="LATEST" value="…" sub="loading" />
         <Pill label="BIGGEST" value="…" sub="loading" />
       </div>
@@ -68,6 +68,7 @@ export function HeaderPills() {
     // run off-screen); from sm up it anchors under its own pill.
     <div
       ref={containerRef}
+      data-label-avoid
       className="pointer-events-auto relative flex flex-wrap gap-2 self-start"
     >
       <Pill
@@ -154,6 +155,7 @@ function PillDropdown({
   return (
     <div
       role="listbox"
+      data-label-avoid
       className="absolute left-0 top-full z-30 mt-2 max-h-80 w-[min(18rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-white/10 bg-ink-900/95 p-2 shadow-2xl backdrop-blur-xl"
     >
       <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/40">

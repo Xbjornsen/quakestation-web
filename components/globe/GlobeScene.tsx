@@ -13,6 +13,7 @@ import { Volcanoes } from "./Volcanoes";
 import { PoleMarkers } from "./PoleMarkers";
 import { GeomagneticPoles } from "./GeomagneticPoles";
 import { CameraController } from "./CameraController";
+import { LabelLayout } from "./LabelLayout";
 import { useMemo } from "react";
 import { detectSwarms, type Swarm } from "@/lib/swarm";
 import { useQuakes } from "@/hooks/useQuakes";
@@ -113,6 +114,15 @@ export default function GlobeScene() {
         <Earth segments={isMobile ? 192 : 512} />
       </Suspense>
       <Atmosphere />
+      {/* Invisible click-catcher for the planet body. Markers and towers are
+          drawn without depth testing, so without this a click on the globe
+          could pick an event on the far side straight through the planet.
+          Slightly inside the surface so near-side markers (r≈1.003) and
+          tower hit-cylinders always win; low-poly so the raycast is cheap. */}
+      <mesh onClick={(e) => e.stopPropagation()}>
+        <sphereGeometry args={[0.995, 48, 32]} />
+        <meshBasicMaterial colorWrite={false} depthWrite={false} />
+      </mesh>
       {showPlates && <Plates />}
       {showVolcanoes && <Volcanoes />}
       {showGeomagneticPoles && <GeomagneticPoles />}
@@ -120,6 +130,7 @@ export default function GlobeScene() {
       <SwarmSpines swarms={spineSwarms} />
       <PoleMarkers />
       <CameraController />
+      <LabelLayout />
     </Canvas>
   );
 }

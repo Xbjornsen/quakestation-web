@@ -5,7 +5,8 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { Swarm } from "@/lib/swarm";
-import { latLonToVec3, facingOpacity } from "@/lib/geo";
+import { latLonToVec3 } from "@/lib/geo";
+import { labelRef } from "@/lib/labelLayout";
 import { magnitudeColor, markerColor, rgbCss } from "@/lib/utils";
 import { useGlobeStore } from "@/store/globeStore";
 import { ringVertex, ringFragment } from "./shaders/ring";
@@ -74,6 +75,7 @@ export function SwarmSpines({ swarms }: { swarms: Swarm[] }) {
       id: string;
       mag: number;
       dir: THREE.Vector3;
+      anchor: THREE.Vector3;
       position: [number, number, number];
     }> = [];
     swarms.forEach((s, si) => {
@@ -90,14 +92,13 @@ export function SwarmSpines({ swarms }: { swarms: Swarm[] }) {
       });
       const height = STACK_BASE + (ordered.length - 1) * STACK_STEP;
       towerHeights[si] = height;
+      const anchor = dir.clone().multiplyScalar(height + STACK_STEP * 0.6);
       labels.push({
         id: s.id,
         mag: s.maxMag,
         dir: dir.clone(),
-        position: dir
-          .clone()
-          .multiplyScalar(height + STACK_STEP * 0.6)
-          .toArray() as [number, number, number],
+        anchor,
+        position: anchor.toArray() as [number, number, number],
       });
     });
     return { entries, towerHeights, labels };
@@ -209,19 +210,9 @@ export function SwarmSpines({ swarms }: { swarms: Swarm[] }) {
   );
 
   const uniforms = useMemo(() => ({ uTime: { value: 0 } }), []);
-  const labelRefs = useRef(new Map<string, HTMLDivElement>());
-  const _labelPos = useRef(new THREE.Vector3());
-
-  useFrame(({ clock, camera }) => {
+  // Tower label visibility is handled centrally by <LabelLayout />.
+  useFrame(({ clock }) => {
     if (matRef.current) matRef.current.uniforms.uTime.value = clock.elapsedTime;
-    // Fade tower labels out as their swarm curves to the far side of the
-    // globe, matching the stem shader's own facing-based fade.
-    for (const l of labels) {
-      const el = labelRefs.current.get(l.id);
-      if (!el) continue;
-      _labelPos.current.set(l.position[0], l.position[1], l.position[2]);
-      el.style.opacity = String(facingOpacity(l.dir, _labelPos.current, camera.position));
-    }
   });
 
   const onHitClick = (e: any) => {
@@ -277,12 +268,15 @@ export function SwarmSpines({ swarms }: { swarms: Swarm[] }) {
       {labels.map((l) => (
         <Html key={l.id} position={l.position} center zIndexRange={[4, 0]}>
           <div
-            ref={(el) => {
-              if (el) labelRefs.current.set(l.id, el);
-              else labelRefs.current.delete(l.id);
-            }}
+            ref={labelRef(`s:${l.id}`, {
+              anchor: l.anchor,
+              dir: l.dir,
+              // Swarm towers summarise several events — let them win ties
+              // against a loose quake of the same magnitude.
+              priority: l.mag + 0.05,
+            })}
             className="pointer-events-none select-none whitespace-nowrap rounded-full border border-white/15 bg-ink-900/75 px-1.5 py-0.5 font-mono text-[10px] font-semibold backdrop-blur-sm"
-            style={{ color: rgbCss(magnitudeColor(l.mag)) }}
+            style={{ color: rgbCss(magnitudeColor(l.mag)), opacity: 0 }}
           >
             M{l.mag.toFixed(1)}
           </div>

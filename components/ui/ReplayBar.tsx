@@ -132,6 +132,7 @@ export function ReplayBar() {
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-4 sm:p-6">
       {!active ? (
         <button
+          data-label-avoid
           onClick={enter}
           disabled={disabled}
           className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-white/15 bg-ink-900/80 px-4 py-2 text-xs font-medium text-white/80 backdrop-blur-md transition-colors hover:bg-white/10 disabled:opacity-40"
@@ -141,7 +142,9 @@ export function ReplayBar() {
           <span className="text-white/40">· M{REPLAY_MIN_MAG.toFixed(1)}+</span>
         </button>
       ) : (
-        <div className="pointer-events-auto flex w-full max-w-xl items-center gap-3 rounded-2xl border border-white/10 bg-ink-900/80 px-3 py-2.5 backdrop-blur-md">
+        <div
+          data-label-avoid
+          className="pointer-events-auto flex w-full max-w-xl items-center gap-3 rounded-2xl border border-white/10 bg-ink-900/80 px-3 py-2.5 backdrop-blur-md">
           <button
             onClick={togglePlay}
             aria-label={playing ? "Pause" : "Play"}

@@ -5,7 +5,8 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { Quake } from "@/lib/usgs";
-import { latLonToVec3, facingOpacity } from "@/lib/geo";
+import { latLonToVec3 } from "@/lib/geo";
+import { labelRef } from "@/lib/labelLayout";
 import { markerColor, rgbCss } from "@/lib/utils";
 import { useGlobeStore } from "@/store/globeStore";
 import { ringVertex, ringFragment, discRadius } from "./shaders/ring";
@@ -103,31 +104,24 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
         .filter((q) => q.mag >= labelMinMag)
         .map((q) => {
           const dir = latLonToVec3(q.lat, q.lon, 1).normalize();
+          const anchor = dir.clone().multiplyScalar(1.01);
           return {
             id: q.id,
             mag: q.mag,
             color: rgbCss(markerColor(q, colorMode)),
             dir,
-            position: dir.clone().multiplyScalar(1.01).toArray() as [number, number, number],
+            anchor,
+            position: anchor.toArray() as [number, number, number],
           };
         }),
     [quakes, labelMinMag, colorMode],
   );
-  const labelRefs = useRef(new Map<string, HTMLDivElement>());
-  const _labelPos = useRef(new THREE.Vector3());
-
   const uniforms = useMemo(() => ({ uTime: { value: 0 } }), []);
 
-  useFrame(({ clock, camera }) => {
+  // Label visibility (far side, limb, overlaps, HUD) is handled centrally by
+  // <LabelLayout />; this frame hook only drives the ripple animation.
+  useFrame(({ clock }) => {
     if (matRef.current) matRef.current.uniforms.uTime.value = clock.elapsedTime;
-    // Fade labels out as their quake curves to the far side of the globe,
-    // so numbers don't float through the sphere toward the camera.
-    for (const l of labels) {
-      const el = labelRefs.current.get(l.id);
-      if (!el) continue;
-      _labelPos.current.copy(l.dir).multiplyScalar(1.01);
-      el.style.opacity = String(facingOpacity(l.dir, _labelPos.current, camera.position));
-    }
   });
 
   const handleClick = (e: any) => {
@@ -161,12 +155,14 @@ export function Markers({ quakes }: { quakes: Quake[] }) {
       {labels.map((l) => (
         <Html key={l.id} position={l.position} center zIndexRange={[4, 0]}>
           <div
-            ref={(el) => {
-              if (el) labelRefs.current.set(l.id, el);
-              else labelRefs.current.delete(l.id);
-            }}
+            ref={labelRef(`q:${l.id}`, {
+              anchor: l.anchor,
+              dir: l.dir,
+              priority: l.mag,
+              offsetY: -12, // matches -translate-y-3
+            })}
+            style={{ color: l.color, opacity: 0 }}
             className="pointer-events-none -translate-y-3 select-none whitespace-nowrap rounded-full border border-white/15 bg-ink-900/75 px-1.5 py-0.5 font-mono text-[10px] font-semibold backdrop-blur-sm"
-            style={{ color: l.color }}
           >
             M{l.mag.toFixed(1)}
           </div>
