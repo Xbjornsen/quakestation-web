@@ -24,6 +24,11 @@ export function GlobeLoader() {
     return () => clearTimeout(t);
   }, []);
 
+  // Readiness signal for tests/agents (see lib/testHooks.ts).
+  useEffect(() => {
+    if (done) document.documentElement.setAttribute("data-globe-ready", "true");
+  }, [done]);
+
   // Unmount once the fade-out transition has finished.
   useEffect(() => {
     if (!done) return;

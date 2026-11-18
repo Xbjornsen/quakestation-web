@@ -15,7 +15,7 @@ import { ShareViewSync } from "@/components/ui/ShareViewSync";
 import { OnboardingOverlay } from "@/components/ui/OnboardingOverlay";
 import { GlobeMount } from "@/components/globe/GlobeMount";
 import { GlobeStatus } from "@/components/ui/GlobeStatus";
-import { fetchQuakeById } from "@/lib/usgs";
+import { fetchQuakeById } from "@/lib/usgsServer";
 
 // A shared ?quake=<id> link gets a relevant title/description for previews.
 export async function generateMetadata({

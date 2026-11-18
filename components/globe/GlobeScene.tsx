@@ -14,6 +14,7 @@ import { PoleMarkers } from "./PoleMarkers";
 import { GeomagneticPoles } from "./GeomagneticPoles";
 import { CameraController } from "./CameraController";
 import { LabelLayout } from "./LabelLayout";
+import { TestHooks } from "./TestHooks";
 import { useMemo } from "react";
 import { detectSwarms, type Swarm } from "@/lib/swarm";
 import { useQuakes } from "@/hooks/useQuakes";
@@ -131,6 +132,7 @@ export default function GlobeScene() {
       <PoleMarkers />
       <CameraController />
       <LabelLayout />
+      <TestHooks />
     </Canvas>
   );
 }
