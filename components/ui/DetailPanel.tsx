@@ -125,7 +125,7 @@ function PoleDetail({ pole }: { pole: PoleInfo }) {
       {pole.predicted && (
         <div className="mt-3 text-[11px] leading-relaxed text-white/50">
           The World Magnetic Model only fits measured surveys through 2020 —
-          positions from 2025 onward are the model's forecast, not a direct
+          positions from 2025 onward are the model&apos;s forecast, not a direct
           measurement.
         </div>
       )}

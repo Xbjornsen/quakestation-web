@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildUsgsUrl, parseUsgs } from "@/lib/usgs";
+import { fixtureName, loadFixture, queryFixture } from "@/lib/usgsServer";
 
 export const revalidate = 60;
 
@@ -8,6 +9,17 @@ export async function GET(req: Request) {
   const minMagnitude = Number(url.searchParams.get("min") ?? 2.5);
   const days = Number(url.searchParams.get("days") ?? 1);
   const limit = Number(url.searchParams.get("limit") ?? 2000);
+
+  // Offline/test mode: serve a committed catalogue instead of the live feed.
+  const fixture = fixtureName();
+  if (fixture) {
+    const fx = await loadFixture(fixture);
+    const quakes = queryFixture(fx, { minMagnitude, days, limit });
+    return NextResponse.json(
+      { quakes, generated: fx.generated, count: quakes.length },
+      { headers: { "Cache-Control": "no-store" } },
+    );
+  }
 
   const endTime = new Date();
   const startTime = new Date(endTime.getTime() - days * 24 * 60 * 60 * 1000);

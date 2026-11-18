@@ -25,6 +25,16 @@ npm run dev
 The app reads the USGS FDSNWS feed through `/api/usgs` (server-cached for 60s).
 No API keys required.
 
+## Checks and tests
+
+```bash
+npm run check          # typecheck + lint + unit tests
+npm run dev:fixture    # dev server on a committed, offline USGS catalogue
+```
+
+See [CLAUDE.md](CLAUDE.md) for the code map, conventions and how to drive the globe
+in tests (fixture mode, `window.__quakestation`).
+
 ## Earth textures
 
 For the photoreal globe, drop these files into `public/textures/`:

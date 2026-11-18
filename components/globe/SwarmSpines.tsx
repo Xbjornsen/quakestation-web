@@ -1,7 +1,7 @@
 "use client";
 
 import { Html } from "@react-three/drei";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { Swarm } from "@/lib/swarm";
@@ -66,7 +66,6 @@ export function SwarmSpines({ swarms }: { swarms: Swarm[] }) {
   const hitRef = useRef<THREE.InstancedMesh>(null);
   const focusSwarm = useGlobeStore((s) => s.focusSwarm);
   const colorMode = useGlobeStore((s) => s.colorMode);
-  const { gl } = useThree();
 
   const { entries, towerHeights, labels } = useMemo(() => {
     const entries: StackEntry[] = [];
